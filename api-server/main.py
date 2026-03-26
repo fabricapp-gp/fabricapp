@@ -200,6 +200,7 @@ class SaveInventoryRequest(BaseModel):
     inventory: float = 0.0
     wip: float = 0.0
     lead_time: int = 7
+    buffer_days: int = 2
     moq: float = 50.0
 
 class SaveAllInventoryRequest(BaseModel):
@@ -284,6 +285,7 @@ def get_saved_input(fabric_name: str) -> dict:
         "inventory": 0.0,
         "wip": 0.0,
         "lead_time": 7,
+        "buffer_days": 2,
         "moq": 50.0,
     })
 
@@ -811,10 +813,11 @@ async def get_dashboard_summary(family: str = ""):
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
+            buffer = inp.get("buffer_days", 2)
             moq = inp.get("moq", 50.0)
             
             _, coverage, reorder, risk = calculate_metrics(
-                demand_daily, inv, wip, lead, 2, moq
+                demand_daily, inv, wip, lead, buffer, moq
             )
             total_reorder = total_reorder + float(reorder)
             
@@ -870,10 +873,11 @@ async def get_dashboard_fabrics(family: str = ""):
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
+            buffer = inp.get("buffer_days", 2)
             moq = inp.get("moq", 50.0)
             
             available, coverage, reorder, risk = calculate_metrics(
-                demand_daily, inv, wip, lead, 2, moq
+                demand_daily, inv, wip, lead, buffer, moq
             )
             
             family_fabrics.append({
@@ -886,6 +890,7 @@ async def get_dashboard_fabrics(family: str = ""):
                 "inventory": inv,
                 "wip": wip,
                 "lead_time": lead,
+                "buffer_days": buffer,
                 "moq": moq,
                 "available": round(float(available), 1), # type: ignore
                 "coverage_days": round(float(coverage), 1) if coverage != float("inf") else 999, # type: ignore
@@ -945,6 +950,7 @@ async def save_inventory_inputs(req: SaveAllInventoryRequest):
             "inventory": item.inventory,
             "wip": item.wip,
             "lead_time": item.lead_time,
+            "buffer_days": item.buffer_days,
             "moq": item.moq,
             "last_updated_by": req.user,
             "last_updated_time": datetime.now().strftime("%d %b %Y, %I:%M %p"),

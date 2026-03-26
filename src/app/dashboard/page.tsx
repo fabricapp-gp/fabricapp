@@ -55,7 +55,7 @@ export default function Dashboard() {
 
   // Inventory edit states (keyed by fabric name)
   const [editedInputs, setEditedInputs] = useState<
-    Record<string, { inventory: number; wip: number; lead_time: number; moq: number }>
+    Record<string, { inventory: number; wip: number; lead_time: number; buffer_days: number; moq: number }>
   >({})
 
   const fetchData = useCallback(async () => {
@@ -111,14 +111,31 @@ export default function Dashboard() {
   const filteredFamilies = families
     .map((f) => ({
       ...f,
-      fabrics: f.fabrics.filter((fab) => {
-        const matchesSearch =
-          fab.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.family.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesRisk =
-          riskFilter === "all" || fab.status === riskFilter
-        return matchesSearch && matchesRisk
-      }),
+      fabrics: f.fabrics
+        .map((fab) => {
+          if (!editedInputs[fab.name]) return fab
+
+          const edited = editedInputs[fab.name]
+          const available = edited.inventory + edited.wip
+          const coverage_days = fab.daily_demand > 0 ? available / fab.daily_demand : 999
+          
+          const threshold = edited.lead_time + edited.buffer_days
+          const status = (coverage_days < threshold ? "Critical" : coverage_days < threshold + 3 ? "Warning" : "Safe") as "Safe" | "Warning" | "Critical"
+          
+          const required_14d = fab.daily_demand * 14
+          let reorder_qty = Math.max(0, required_14d - available)
+          if (reorder_qty > 0) reorder_qty = Math.max(edited.moq, reorder_qty)
+
+          return { ...fab, ...edited, available, coverage_days, status, reorder_qty }
+        })
+        .filter((fab) => {
+          const matchesSearch =
+            fab.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.family.toLowerCase().includes(searchTerm.toLowerCase())
+          const matchesRisk =
+            riskFilter === "all" || fab.status === riskFilter
+          return matchesSearch && matchesRisk
+        }),
     }))
     .filter((f) => f.fabrics.length > 0)
 
@@ -440,12 +457,13 @@ export default function Dashboard() {
                           inventory: fab.inventory,
                           wip: fab.wip,
                           lead_time: fab.lead_time,
+                          buffer_days: fab.buffer_days,
                           moq: fab.moq,
                         }
                         return (
                           <div
                             key={fab.name}
-                            className="grid grid-cols-5 gap-3 items-center bg-secondary/20 rounded-lg p-3 border border-border/30"
+                            className="grid grid-cols-6 gap-3 items-center bg-secondary/20 rounded-lg p-3 border border-border/30"
                           >
                             <div className="text-sm font-medium capitalize truncate">
                               {fab.name}
@@ -504,6 +522,26 @@ export default function Dashboard() {
                                     [fab.name]: {
                                       ...edited,
                                       lead_time: Number(e.target.value),
+                                    },
+                                  }))
+                                }
+                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground">
+                                Buffer (days)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={edited.buffer_days}
+                                onChange={(e) =>
+                                  setEditedInputs((prev) => ({
+                                    ...prev,
+                                    [fab.name]: {
+                                      ...edited,
+                                      buffer_days: Number(e.target.value),
                                     },
                                   }))
                                 }

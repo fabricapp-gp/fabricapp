@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import {
   LineChart,
@@ -43,6 +44,7 @@ interface ForecastResult {
 }
 
 export default function ForecastPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const [running, setRunning] = useState(false)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
@@ -98,6 +100,11 @@ export default function ForecastPage() {
       // Refresh status
       const statusData = await apiGet<ForecastStatus>("/api/forecast/status")
       setForecastStatus(statusData)
+      
+      // Auto-redirect to dashboard
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 2000)
     } catch (err: unknown) {
       console.error(err)
       setError(err instanceof Error ? err.message : "Forecast failed")

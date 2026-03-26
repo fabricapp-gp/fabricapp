@@ -3,7 +3,7 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RiskBadge } from "@/components/RiskBadge"
-import { Package, Truck, AlertCircle, ExternalLink } from "lucide-react"
+import { Package, Truck, AlertCircle, ExternalLink, Clock } from "lucide-react"
 
 export interface FabricData {
   name: string
@@ -15,6 +15,7 @@ export interface FabricData {
   inventory: number
   wip: number
   lead_time: number
+  buffer_days: number
   moq: number
   available: number
   coverage_days: number
@@ -29,12 +30,49 @@ interface FabricCardProps {
 }
 
 export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
+  const coverageLabel =
+    fabric.coverage_days >= 999
+      ? "∞ days"
+      : `${fabric.coverage_days.toFixed(1)} days`
+
+  const coverageColor =
+    fabric.status === "Critical"
+      ? "from-red-500/20 to-red-500/5 border-red-500/30 text-red-400"
+      : fabric.status === "Warning"
+      ? "from-amber-500/20 to-amber-500/5 border-amber-500/30 text-amber-400"
+      : "from-emerald-500/20 to-emerald-500/5 border-emerald-500/30 text-emerald-400"
+
+  const coverageIcon =
+    fabric.status === "Critical"
+      ? "🔴"
+      : fabric.status === "Warning"
+      ? "🟡"
+      : "🟢"
+
   return (
     <Card
       className="flex flex-col h-full border-border/50 hover:border-primary/50 transition-colors shadow-sm bg-card/60 backdrop-blur-md cursor-pointer group"
       onClick={() => onSelectFabric?.(fabric.name)}
     >
-      <CardHeader className="py-4 border-b border-border/30 bg-secondary/20">
+      {/* ── Days-to-Last Banner ── */}
+      <div
+        className={`px-4 py-3 rounded-t-xl bg-gradient-to-r border-b ${coverageColor}`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock size={16} />
+            <span className="text-sm font-bold">
+              Fabric lasts {coverageLabel}
+            </span>
+          </div>
+          <span className="text-lg">{coverageIcon}</span>
+        </div>
+        <div className="text-xs opacity-80 mt-0.5">
+          AI demand: {fabric.daily_demand.toFixed(1)} m/day
+        </div>
+      </div>
+
+      <CardHeader className="py-3 border-b border-border/30 bg-secondary/20">
         <div className="flex justify-between items-start">
           <div className="space-y-1 min-w-0 flex-1">
             <CardTitle className="text-lg leading-tight text-foreground truncate capitalize">
@@ -51,18 +89,9 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 p-4 grid grid-cols-2 gap-y-4 gap-x-2">
+      <CardContent className="flex-1 p-4 grid grid-cols-2 gap-y-3 gap-x-2">
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground mb-1">
-            Daily Demand
-          </span>
-          <span className="font-semibold text-sm">
-            {fabric.daily_demand.toFixed(1)} m/day
-          </span>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground mb-1">
+          <span className="text-xs text-muted-foreground mb-0.5">
             14-Day Need
           </span>
           <span className="font-semibold text-sm">
@@ -71,7 +100,14 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
         </div>
 
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground mb-1">Inventory</span>
+          <span className="text-xs text-muted-foreground mb-0.5">BOM</span>
+          <span className="font-semibold text-sm">
+            {fabric.consumption_cm} cm
+          </span>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-xs text-muted-foreground mb-0.5">Inventory</span>
           <div className="flex items-center space-x-1">
             <Package size={14} className="text-blue-400" />
             <span className="font-semibold text-sm">
@@ -81,7 +117,7 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
         </div>
 
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground mb-1">WIP</span>
+          <span className="text-xs text-muted-foreground mb-0.5">WIP</span>
           <div className="flex items-center space-x-1">
             <Truck size={14} className="text-purple-400" />
             <span className="font-semibold text-sm">
@@ -91,16 +127,16 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
         </div>
 
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground mb-1">BOM</span>
+          <span className="text-xs text-muted-foreground mb-0.5">Used In</span>
           <span className="font-semibold text-sm">
-            {fabric.consumption_cm} cm
+            {fabric.used_in_styles.length} style{fabric.used_in_styles.length !== 1 ? "s" : ""}
           </span>
         </div>
 
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground mb-1">Used In</span>
+          <span className="text-xs text-muted-foreground mb-0.5">Lead / Buffer</span>
           <span className="font-semibold text-sm">
-            {fabric.used_in_styles.length} style{fabric.used_in_styles.length !== 1 ? "s" : ""}
+            {fabric.lead_time}d / {fabric.buffer_days}d
           </span>
         </div>
       </CardContent>
@@ -127,7 +163,7 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
       {/* Click hint */}
       <div className="px-4 py-2 border-t border-border/20 flex items-center justify-center gap-1 text-xs text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity">
         <ExternalLink size={12} />
-        Click for details
+        Click to edit inputs
       </div>
     </Card>
   )
