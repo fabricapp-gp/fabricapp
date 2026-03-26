@@ -1,0 +1,12 @@
+# API Server Dependencies (Unpinned for maximum compatibility)
+fastapi
+uvicorn
+pydantic
+pandas
+numpy
+prophet
+python-multipart
+jinja2
+requests
+openpyxl
+python-dotenv
