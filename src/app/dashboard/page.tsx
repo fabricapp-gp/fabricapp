@@ -312,13 +312,10 @@ function DashboardContent() {
         <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-center gap-3">
           <AlertTriangle size={20} className="text-destructive" />
           <div>
-            <div className="text-sm font-semibold text-destructive">
-              Forecast is Stale
-            </div>
-            <div className="text-xs text-destructive/80">
-              Reorder actions are disabled. Please update the forecast via the
-              Forecast Engine.
-            </div>
+            <h3 className="text-sm font-bold text-destructive/90">Forecast is Stale</h3>
+            <p className="text-xs text-destructive/70">
+              Reorder suggestions are based on historical/stale data. Update the forecast via the Forecast Engine for latest accuracy.
+            </p>
           </div>
         </div>
       )}
@@ -423,12 +420,8 @@ function DashboardContent() {
             </div>
             <button
               onClick={handleSaveInputs}
-              disabled={saving || isStale}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                isStale
-                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              }`}
+              disabled={saving}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 shadow-md shadow-primary/20"
             >
               <Save size={16} />
               {saving ? "Saving..." : "Save All Inputs"}

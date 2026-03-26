@@ -613,12 +613,12 @@ async def forecast_status():
         "last_update": last_update_dt.strftime("%d %b %Y, %I:%M %p") if last_update_dt is not None else None,
     }
     
-    # Add forecast stats if available
-    if os.path.exists(FORECAST_FILE):
+    # Add history stats if available
+    if os.path.exists(TRAINING_FILE):
         try:
-            df = pd.read_csv(FORECAST_FILE)
+            df = pd.read_csv(TRAINING_FILE)
             result["total_rows"] = len(df)
-            result["styles_forecasted"] = df["Fabric_Family_GROUP"].nunique() if "Fabric_Family_GROUP" in df.columns else 0
+            result["styles_forecasted"] = df["STYLE_GROUP"].nunique() if "STYLE_GROUP" in df.columns else 0
         except Exception:
             pass
     

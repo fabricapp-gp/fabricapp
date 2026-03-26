@@ -201,8 +201,15 @@ export default function ForecastPage() {
                 )}
               </div>
               {forecastStatus.styles_forecasted !== undefined && (
-                <div className="text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded-full">
-                  {forecastStatus.styles_forecasted} styles forecasted
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded-full">
+                    {forecastStatus.styles_forecasted} styles
+                  </div>
+                  {forecastStatus.total_rows !== undefined && (
+                    <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full border border-primary/20">
+                      Total History: {forecastStatus.total_rows.toLocaleString()} rows
+                    </div>
+                  )}
                 </div>
               )}
             </div>
