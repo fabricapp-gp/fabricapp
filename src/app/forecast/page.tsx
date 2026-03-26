@@ -52,6 +52,7 @@ export default function ForecastPage() {
   const [forecastStatus, setForecastStatus] = useState<ForecastStatus | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const [hydrated, setHydrated] = useState(false)
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -60,23 +61,32 @@ export default function ForecastPage() {
     
     if (savedUpload) setUploadResult(JSON.parse(savedUpload))
     if (savedResult) setForecastResult(JSON.parse(savedResult))
+    
+    setHydrated(true)
   }, [])
 
   // Save to localStorage when results change
   useEffect(() => {
-    if (uploadResult) localStorage.setItem("fabricintel_forecast_upload", JSON.stringify(uploadResult))
-  }, [uploadResult])
+    if (hydrated && uploadResult) {
+      localStorage.setItem("fabricintel_forecast_upload", JSON.stringify(uploadResult))
+    }
+  }, [uploadResult, hydrated])
 
   useEffect(() => {
-    if (forecastResult) localStorage.setItem("fabricintel_forecast_result", JSON.stringify(forecastResult))
-  }, [forecastResult])
+    if (hydrated && forecastResult) {
+      localStorage.setItem("fabricintel_forecast_result", JSON.stringify(forecastResult))
+    }
+  }, [forecastResult, hydrated])
 
   // Fetch forecast status on load
   useEffect(() => {
     const fetchStatus = async () => {
       try {
         const data = await apiGet<ForecastStatus>("/api/forecast/status")
-        setForecastStatus(data)
+        // Defensive: Only overwrite if we got a real last_update
+        if (data && data.last_update) {
+          setForecastStatus(data)
+        }
       } catch (err: unknown) {
         console.error("Failed to fetch forecast status", err)
       }

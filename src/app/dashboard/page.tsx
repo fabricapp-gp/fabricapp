@@ -98,17 +98,23 @@ function DashboardContent() {
     try {
       const familyParam = selectedFamily !== "all" ? `?family=${encodeURIComponent(selectedFamily)}` : ""
       const [summaryData, familiesData] = await Promise.all([
-        apiGet<DashboardSummary>(`/api/dashboard/summary${familyParam}`),
+        apiGet<DashboardSummary>("/api/dashboard/summary"),
         apiGet<FamilyResult[]>(`/api/dashboard/fabrics${familyParam}`),
       ])
-      setSummary(summaryData)
-      setFamilies(familiesData)
-    } catch (e: unknown) {
-      console.error("Dashboard fetch error", e)
+
+      // Defensive: Only update if we got real data or if we don't have any cached data yet
+      if (summaryData && (summaryData.active_styles > 0 || !summary)) {
+        setSummary(summaryData)
+      }
+      if (familiesData && (familiesData.length > 0 || families.length === 0)) {
+        setFamilies(familiesData)
+      }
+    } catch (err: unknown) {
+      console.error("Dashboard fetch error", err)
     } finally {
       setLoading(false)
     }
-  }, [selectedFamily])
+  }, [selectedFamily, summary, families])
 
   useEffect(() => {
     if (!user) return
@@ -530,6 +536,13 @@ function DashboardContent() {
                       Apparel Line
                     </span>
                   </h3>
+                  <p className="text-secondary-foreground text-xs backdrop-blur-md bg-secondary/30 px-3 py-1.5 rounded-full border border-border/50 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full animate-pulse bg-primary"></span>
+              Control Tower Live
+              {(!summary || summary.active_styles === 0) && families.length > 0 && (
+                <span className="ml-2 font-bold text-amber-500">📍 Cached Session</span>
+              )}
+            </p>
                   <div className="text-sm px-3 py-1 bg-secondary/40 rounded-full text-secondary-foreground border border-border/50">
                     Demand:{" "}
                     <span className="font-semibold text-primary">
