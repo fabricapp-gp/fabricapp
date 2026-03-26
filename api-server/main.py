@@ -51,12 +51,14 @@ app.add_middleware(
 # Config
 # ════════════════════════════════════════════════════
 
-FABRIC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MAPPING_FILE = os.path.join(FABRIC_DIR, "FABRIC MAPPING MAPPING - Sheet1.csv")
-
 # Vercel has a read-only filesystem — use /tmp for writable files
 _IS_VERCEL = bool(os.environ.get("VERCEL"))
 _WRITABLE_DIR = "/tmp" if _IS_VERCEL else FABRIC_DIR
+
+# Original file in repo
+MAPPING_SOURCE = os.path.join(FABRIC_DIR, "FABRIC MAPPING MAPPING - Sheet1.csv")
+# Writable file for runtime
+MAPPING_FILE = os.path.join(_WRITABLE_DIR, "FABRIC MAPPING MAPPING - Sheet1.csv")
 
 FORECAST_FILE = os.path.join(_WRITABLE_DIR, "forecast_output.csv")
 ORDERS_MASTER = os.path.join(_WRITABLE_DIR, "orders_master.csv")
@@ -67,7 +69,7 @@ USERS_FILE = os.path.join(_WRITABLE_DIR, "users.json")
 
 # On Vercel, seed writable files from the repo copy if they don't exist in /tmp yet
 if _IS_VERCEL:
-    for _fname in ["forecast_output.csv", "audit_log.json", "users.json"]:
+    for _fname in ["forecast_output.csv", "audit_log.json", "users.json", "FABRIC MAPPING MAPPING - Sheet1.csv"]:
         _src = os.path.join(FABRIC_DIR, _fname)
         _dst = os.path.join(_WRITABLE_DIR, _fname)
         if os.path.exists(_src) and not os.path.exists(_dst):
@@ -222,10 +224,13 @@ class StudioRequest(BaseModel):
 def get_mapping() -> pd.DataFrame:
     """Load and normalize the fabric mapping CSV."""
     try:
-        files = glob.glob(os.path.join(FABRIC_DIR, "FABRIC MAPPING*.csv"))
-        if not files:
-            raise HTTPException(status_code=500, detail="Fabric mapping file not found")
-        df = pd.read_csv(files[0])
+        if not os.path.exists(MAPPING_FILE):
+             # Fallback to source if writable copy missing (shouldn't happen with seeding)
+             if os.path.exists(MAPPING_SOURCE):
+                 return normalize_mapping_df(pd.read_csv(MAPPING_SOURCE))
+             raise HTTPException(status_code=500, detail="Fabric mapping file not found")
+        
+        df = pd.read_csv(MAPPING_FILE)
         return normalize_mapping_df(df)
     except HTTPException:
         raise

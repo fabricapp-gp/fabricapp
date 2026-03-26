@@ -113,7 +113,18 @@ def normalize_mapping_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def denormalize_for_save(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert normalized column names back to CSV-friendly names for saving."""
+    """Convert normalized column names back to CSV-friendly names for saving.
+    Also ensures CM to M conversion is synced.
+    """
+    df = df.copy()
+    # Ensure Meters columns are synced from Centimeters before saving
+    if "main1_cm" in df.columns:
+        df["main1_m"] = pd.to_numeric(df["main1_cm"], errors="coerce").fillna(0) / 100.0
+    if "main2_cm" in df.columns:
+        df["main2_m"] = pd.to_numeric(df["main2_cm"], errors="coerce").fillna(0) / 100.0
+    if "lining_cm" in df.columns:
+        df["lining_m"] = pd.to_numeric(df["lining_cm"], errors="coerce").fillna(0) / 100.0
+
     rename = {}
     for col in df.columns:
         if col in SAVE_COLUMN_MAP:

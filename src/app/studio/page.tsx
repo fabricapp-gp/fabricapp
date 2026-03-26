@@ -166,9 +166,18 @@ export default function StudioPage() {
       // For now, let's use a standard fetch or assume our backend accepts POST for update too if we change it.
       // Better: I'll use fetch directly or fix the helper if needed.
       
+      const payload = { 
+        ...newStyle, 
+        user: user?.username,
+        // Convert Meters to Centimeters for backend
+        fabric1_cm: Number(newStyle.fabric1_cm) * 100,
+        fabric2_cm: Number(newStyle.fabric2_cm) * 100,
+        lining_cm: Number(newStyle.lining_cm) * 100,
+      }
+
       const data = await apiFetch<any>(endpoint, {
         method,
-        body: JSON.stringify({ ...newStyle, user: user?.username })
+        body: JSON.stringify(payload)
       });
 
       showToast(`${newStyle.style_name} ${showAddForm === "EDIT" ? "updated" : "saved"} successfully!`)
@@ -198,11 +207,11 @@ export default function StudioPage() {
       style_name: row.style_name,
       fabric_family: row.fabric_family,
       fabric1: row.main1_name,
-      fabric1_cm: row.main1_cm,
+      fabric1_cm: row.main1_cm / 100, // Display as Meters
       fabric2: row.main2_name,
-      fabric2_cm: row.main2_cm,
+      fabric2_cm: row.main2_cm / 100, // Display as Meters
       lining: row.lining_name,
-      lining_cm: row.lining_cm,
+      lining_cm: row.lining_cm / 100, // Display as Meters
     })
     setShowAddForm("EDIT")
     setFormErrors([])
@@ -472,6 +481,7 @@ export default function StudioPage() {
                           <input
                             type="number"
                             min="0"
+                            step="any"
                             value={newStyle.fabric1_cm}
                             onChange={(e) =>
                               setNewStyle({
@@ -479,7 +489,7 @@ export default function StudioPage() {
                                 fabric1_cm: Number(e.target.value),
                               })
                             }
-                            placeholder="Consumption (cm)"
+                            placeholder="Consumption (Meters)"
                             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
@@ -507,6 +517,7 @@ export default function StudioPage() {
                           <input
                             type="number"
                             min="0"
+                            step="any"
                             value={newStyle.fabric2_cm}
                             onChange={(e) =>
                               setNewStyle({
@@ -514,7 +525,7 @@ export default function StudioPage() {
                                 fabric2_cm: Number(e.target.value),
                               })
                             }
-                            placeholder="Consumption (cm)"
+                            placeholder="Consumption (Meters)"
                             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
@@ -545,6 +556,7 @@ export default function StudioPage() {
                           <input
                             type="number"
                             min="0"
+                            step="any"
                             value={newStyle.lining_cm}
                             onChange={(e) =>
                               setNewStyle({
@@ -552,7 +564,7 @@ export default function StudioPage() {
                                 lining_cm: Number(e.target.value),
                               })
                             }
-                            placeholder="Consumption (cm)"
+                            placeholder="Consumption (Meters)"
                             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
