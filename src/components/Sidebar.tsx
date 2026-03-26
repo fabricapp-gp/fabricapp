@@ -51,13 +51,13 @@ export function Sidebar() {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Forecast Engine", href: "/forecast", icon: LineChart },
     { name: "Studio", href: "/studio", icon: Scissors },
-    { name: "Email Test", href: "/testemail", icon: Mail },
-    { name: "Test Style", href: "/teststyle", icon: TestTube },
   ]
 
   // Admin-only nav items
   const adminItems = [
     { name: "Admin Panel", href: "/admin", icon: Shield },
+    { name: "Email Test", href: "/testemail", icon: Mail },
+    { name: "Test Style", href: "/teststyle", icon: TestTube },
   ]
 
   return (

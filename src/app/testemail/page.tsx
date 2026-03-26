@@ -9,18 +9,18 @@ export default function TestEmailPage() {
   
   const [sender, setSender] = useState(process.env.NEXT_PUBLIC_SENDER_EMAIL || "")
   const [password, setPassword] = useState(process.env.NEXT_PUBLIC_SENDER_PASSWORD || "")
-  const [receivers, setReceivers] = useState("procurement@company.com, production@company.com")
+  const [receivers, setReceivers] = useState("sathinishtha1054@gmail.com")
   
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{success: boolean, message: string} | null>(null)
 
-  if (!user) {
+  if (!user || user.role !== "Admin") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="p-8 text-center bg-card rounded-2xl border border-border">
           <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Login Required</h2>
-          <p className="text-muted-foreground">Access the Email Test Center via the sidebar login.</p>
+          <h2 className="text-2xl font-bold mb-2">Admin Login Required</h2>
+          <p className="text-muted-foreground">Access the Email Test Center requires Admin privileges.</p>
         </div>
       </div>
     )
@@ -104,12 +104,11 @@ export default function TestEmailPage() {
             <div>
               <h3 className="text-sm font-semibold mb-2">Recipient Settings (To)</h3>
               <div>
-                <label className="text-xs font-medium text-foreground">Recipient Emails (comma separated)</label>
+                <label className="text-xs font-medium text-foreground">Recipient Emails</label>
                 <textarea 
                   value={receivers} 
-                  onChange={e => setReceivers(e.target.value)}
-                  className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-20"
-                  required
+                  readOnly
+                  className="w-full mt-1 bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-20 cursor-not-allowed opacity-80"
                 />
               </div>
             </div>

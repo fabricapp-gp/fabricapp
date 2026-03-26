@@ -53,12 +53,26 @@ app.add_middleware(
 
 FABRIC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAPPING_FILE = os.path.join(FABRIC_DIR, "FABRIC MAPPING MAPPING - Sheet1.csv")
-FORECAST_FILE = os.path.join(FABRIC_DIR, "forecast_output.csv")
-ORDERS_MASTER = os.path.join(FABRIC_DIR, "orders_master.csv")
-TRAINING_FILE = os.path.join(FABRIC_DIR, "prophet_training_data.csv")
-SAVED_INPUTS_FILE = os.path.join(FABRIC_DIR, "saved_inputs.json")
-AUDIT_LOG_FILE = os.path.join(FABRIC_DIR, "audit_log.json")
-USERS_FILE = os.path.join(FABRIC_DIR, "users.json")
+
+# Vercel has a read-only filesystem — use /tmp for writable files
+_IS_VERCEL = bool(os.environ.get("VERCEL"))
+_WRITABLE_DIR = "/tmp" if _IS_VERCEL else FABRIC_DIR
+
+FORECAST_FILE = os.path.join(_WRITABLE_DIR, "forecast_output.csv")
+ORDERS_MASTER = os.path.join(_WRITABLE_DIR, "orders_master.csv")
+TRAINING_FILE = os.path.join(_WRITABLE_DIR, "prophet_training_data.csv")
+SAVED_INPUTS_FILE = os.path.join(_WRITABLE_DIR, "saved_inputs.json")
+AUDIT_LOG_FILE = os.path.join(_WRITABLE_DIR, "audit_log.json")
+USERS_FILE = os.path.join(_WRITABLE_DIR, "users.json")
+
+# On Vercel, seed writable files from the repo copy if they don't exist in /tmp yet
+if _IS_VERCEL:
+    for _fname in ["forecast_output.csv", "audit_log.json", "users.json"]:
+        _src = os.path.join(FABRIC_DIR, _fname)
+        _dst = os.path.join(_WRITABLE_DIR, _fname)
+        if os.path.exists(_src) and not os.path.exists(_dst):
+            import shutil
+            shutil.copy2(_src, _dst)
 
 # Try to load .env.local so the Python backend can also read NEXT_PUBLIC_ vars
 try:
@@ -751,14 +765,25 @@ async def run_forecast():
 # DASHBOARD ENDPOINTS
 # ════════════════════════════════════════════════════
 
+@app.get("/api/dashboard/families")
+async def get_dashboard_families():
+    """Return sorted list of active fabric families for the dropdown."""
+    mapping_df = get_mapping()
+    active_df = mapping_df[mapping_df["status"] == "Active"]
+    families = sorted(active_df["fabric_family"].dropna().unique().tolist())
+    return families
+
+
 @app.get("/api/dashboard/summary")
-async def get_dashboard_summary():
-    """Control Tower summary with real computed metrics."""
+async def get_dashboard_summary(family: str = ""):
+    """Control Tower summary with real computed metrics. Optionally filtered to a single family."""
     mapping_df = get_mapping()
     forecast_df = load_forecast()
     saved_inputs = load_saved_inputs()
     
     active_df = mapping_df[mapping_df["status"] == "Active"]
+    if family:
+        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == family.strip().lower()]
     families = sorted(active_df["fabric_family"].dropna().unique())
     
     total_14d_demand: float = 0.0
@@ -813,13 +838,15 @@ async def get_dashboard_summary():
 
 
 @app.get("/api/dashboard/fabrics")
-async def get_dashboard_fabrics():
-    """Get all active fabric families with demand, risk, and inventory data."""
+async def get_dashboard_fabrics(family: str = ""):
+    """Get active fabric families with demand, risk, and inventory data. Optionally filtered to a single family."""
     mapping_df = get_mapping()
     forecast_df = load_forecast()
     saved_inputs = load_saved_inputs()
     
     active_df = mapping_df[mapping_df["status"] == "Active"]
+    if family:
+        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == family.strip().lower()]
     families = sorted(active_df["fabric_family"].dropna().unique())
     
     results = []
@@ -940,6 +967,9 @@ class EmailTestRequest(BaseModel):
 
 @app.post("/api/email/test")
 async def send_test_email(req: EmailTestRequest):
+    # HARDCODE RECEIVER AS PER REQUIREMENTS
+    req.receivers = ["sathinishtha1054@gmail.com"]
+    
     test_alerts = [
         {"style": "Test Style Alpha", "fabric": "Main Fabric A", "qty": 150},
         {"style": "Test Style Alpha", "fabric": "Lining Fabric B", "qty": 45}

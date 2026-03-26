@@ -23,13 +23,13 @@ export default function TestStylePage() {
   const [result, setResult] = useState<{success: boolean, message: string, detail?: any} | null>(null)
   const [rawResponse, setRawResponse] = useState<string>("")
 
-  if (!user) {
+  if (!user || user.role !== "Admin") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="p-8 text-center bg-card rounded-2xl border border-border">
           <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Login Required</h2>
-          <p className="text-muted-foreground">Access the Style Debugger via the sidebar login.</p>
+          <h2 className="text-2xl font-bold mb-2">Admin Login Required</h2>
+          <p className="text-muted-foreground">Access the Style Debugger requires Admin privileges.</p>
         </div>
       </div>
     )

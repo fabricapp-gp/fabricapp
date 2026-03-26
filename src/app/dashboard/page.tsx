@@ -15,6 +15,7 @@ import {
   Filter,
   Save,
   Layers,
+  ChevronDown,
 } from "lucide-react"
 import { apiGet, apiPost } from "@/lib/api"
 
@@ -49,6 +50,8 @@ export default function Dashboard() {
   const [selectedFabric, setSelectedFabric] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState("")
+  const [selectedFamily, setSelectedFamily] = useState<string>("all")
+  const [familyList, setFamilyList] = useState<string[]>([])
 
   // Inventory edit states (keyed by fabric name)
   const [editedInputs, setEditedInputs] = useState<
@@ -57,9 +60,10 @@ export default function Dashboard() {
 
   const fetchData = useCallback(async () => {
     try {
+      const familyParam = selectedFamily !== "all" ? `?family=${encodeURIComponent(selectedFamily)}` : ""
       const [summaryData, familiesData] = await Promise.all([
-        apiGet<DashboardSummary>("/api/dashboard/summary"),
-        apiGet<FamilyResult[]>("/api/dashboard/fabrics"),
+        apiGet<DashboardSummary>(`/api/dashboard/summary${familyParam}`),
+        apiGet<FamilyResult[]>(`/api/dashboard/fabrics${familyParam}`),
       ])
       setSummary(summaryData)
       setFamilies(familiesData)
@@ -68,12 +72,20 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedFamily])
 
   useEffect(() => {
     if (!user) return
     void fetchData()
   }, [user, fetchData])
+
+  // Fetch family list once on mount for the dropdown
+  useEffect(() => {
+    if (!user) return
+    apiGet<string[]>("/api/dashboard/families")
+      .then((data) => setFamilyList(data))
+      .catch((err: unknown) => console.error("Failed to fetch families", err))
+  }, [user])
 
   if (!user) {
     return (
@@ -182,6 +194,29 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          {/* Fabric Family Dropdown */}
+          <div className="relative">
+            <select
+              id="family-selector"
+              value={selectedFamily}
+              onChange={(e) => {
+                setSelectedFamily(e.target.value)
+                setLoading(true)
+              }}
+              className="bg-background border border-primary/30 rounded-lg pl-3 pr-8 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
+            >
+              <option value="all">All Collections</option>
+              {familyList.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+          </div>
           {/* Forecast Freshness Badge */}
           {summary && (
             <div
