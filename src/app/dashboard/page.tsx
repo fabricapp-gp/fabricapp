@@ -102,19 +102,15 @@ function DashboardContent() {
         apiGet<FamilyResult[]>(`/api/dashboard/fabrics${familyParam}`),
       ])
 
-      // Defensive: Only update if we got real data or if we don't have any cached data yet
-      if (summaryData && (summaryData.active_styles > 0 || !summary)) {
-        setSummary(summaryData)
-      }
-      if (familiesData && (familiesData.length > 0 || families.length === 0)) {
-        setFamilies(familiesData)
-      }
+      // Defensive: Only update if we got real data or if we don't have anything cached yet
+      setSummary((prev) => (summaryData && (summaryData.active_styles > 0 || !prev) ? summaryData : prev))
+      setFamilies((prev) => (familiesData && (familiesData.length > 0 || prev.length === 0) ? familiesData : prev))
     } catch (err: unknown) {
       console.error("Dashboard fetch error", err)
     } finally {
       setLoading(false)
     }
-  }, [selectedFamily, summary, families])
+  }, [selectedFamily])
 
   useEffect(() => {
     if (!user) return
