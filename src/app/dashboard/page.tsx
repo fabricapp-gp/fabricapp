@@ -286,7 +286,9 @@ function DashboardContent() {
       await apiPost("/api/dashboard/save-inputs", { user: user.username, items })
       
       setSaveMsg("Inputs saved successfully!")
-      setEditedInputs({})
+      // CRITICAL: Do NOT clear setEditedInputs({}). 
+      // Vercel serverless wipes /tmp files constantly, so the backend cannot be relied upon to persist the data.
+      // By keeping it in local state, localStorage acts as our permanent, infallible database.
       void fetchData() // Refresh with new calculations
       setTimeout(() => setSaveMsg(""), 3000)
     } catch (err: unknown) {
