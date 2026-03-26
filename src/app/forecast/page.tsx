@@ -53,6 +53,24 @@ export default function ForecastPage() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
 
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const savedUpload = localStorage.getItem("fabricintel_forecast_upload")
+    const savedResult = localStorage.getItem("fabricintel_forecast_result")
+    
+    if (savedUpload) setUploadResult(JSON.parse(savedUpload))
+    if (savedResult) setForecastResult(JSON.parse(savedResult))
+  }, [])
+
+  // Save to localStorage when results change
+  useEffect(() => {
+    if (uploadResult) localStorage.setItem("fabricintel_forecast_upload", JSON.stringify(uploadResult))
+  }, [uploadResult])
+
+  useEffect(() => {
+    if (forecastResult) localStorage.setItem("fabricintel_forecast_result", JSON.stringify(forecastResult))
+  }, [forecastResult])
+
   // Fetch forecast status on load
   useEffect(() => {
     const fetchStatus = async () => {

@@ -62,6 +62,30 @@ function DashboardContent() {
     Record<string, { inventory: number; wip: number; lead_time: number; buffer_days: number; moq: number }>
   >({})
 
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const savedSummary = localStorage.getItem("fabricintel_dashboard_summary")
+    const savedFamilies = localStorage.getItem("fabricintel_dashboard_families")
+    const savedEdits = localStorage.getItem("fabricintel_dashboard_edits")
+    
+    if (savedSummary) setSummary(JSON.parse(savedSummary))
+    if (savedFamilies) setFamilies(JSON.parse(savedFamilies))
+    if (savedEdits) setEditedInputs(JSON.parse(savedEdits))
+  }, [])
+
+  // Save to localStorage when states change
+  useEffect(() => {
+    if (summary) localStorage.setItem("fabricintel_dashboard_summary", JSON.stringify(summary))
+  }, [summary])
+
+  useEffect(() => {
+    if (families.length > 0) localStorage.setItem("fabricintel_dashboard_families", JSON.stringify(families))
+  }, [families])
+
+  useEffect(() => {
+    localStorage.setItem("fabricintel_dashboard_edits", JSON.stringify(editedInputs))
+  }, [editedInputs])
+
   const fetchData = useCallback(async () => {
     try {
       const familyParam = selectedFamily !== "all" ? `?family=${encodeURIComponent(selectedFamily)}` : ""
@@ -472,13 +496,19 @@ function DashboardContent() {
                 </div>
 
                 {/* Inline inventory inputs for this family */}
-                {isEditor && !isStale && (
+                {isEditor && (
                   <details className="bg-secondary/5 rounded-xl border border-border/30 overflow-hidden shadow-sm">
-                    <summary className="p-4 text-sm font-semibold text-muted-foreground cursor-pointer hover:bg-secondary/10 transition-colors list-none flex items-center gap-2">
+                    <summary className="p-4 text-sm font-semibold text-muted-foreground cursor-pointer hover:bg-secondary/10 transition-colors list-none flex items-center gap-2 font-mono uppercase tracking-widest text-[10px]">
                       <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
                       ✏️ Edit Inventory Inputs for {fam.family}
                     </summary>
                     <div className="p-4 pt-0 space-y-3">
+                      {isStale && (
+                        <div className="mb-4 bg-destructive/5 border border-destructive/10 rounded-lg p-3 text-[11px] text-destructive/80 flex items-center gap-2">
+                           <AlertTriangle size={14} />
+                           <span>Forecast is STALE. Suggestions below use last known demand, but you can still update actuals.</span>
+                        </div>
+                      )}
                       {fam.fabrics.map((fab) => {
                         const edited = editedInputs[fab.name] || {
                           inventory: fab.inventory,
