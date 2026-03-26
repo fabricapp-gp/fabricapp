@@ -51,6 +51,8 @@ app.add_middleware(
 # Config
 # ════════════════════════════════════════════════════
 
+FABRIC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # Vercel has a read-only filesystem — use /tmp for writable files
 _IS_VERCEL = bool(os.environ.get("VERCEL"))
 _WRITABLE_DIR = "/tmp" if _IS_VERCEL else FABRIC_DIR
