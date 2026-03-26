@@ -1,0 +1,10 @@
+{
+  "nishtha": {
+    "password": "fabric2024",
+    "role": "Admin"
+  },
+  "david": {
+    "password": "user123",
+    "role": "Viewer"
+  }
+}
