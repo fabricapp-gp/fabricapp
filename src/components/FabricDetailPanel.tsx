@@ -11,6 +11,7 @@ import {
   Layers,
   ArrowRight,
 } from "lucide-react"
+import { apiGet } from "@/lib/api"
 
 interface FabricUsage {
   style: string
@@ -49,12 +50,10 @@ export function FabricDetailPanel({ fabricName, onClose }: FabricDetailPanelProp
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:8000/api/dashboard/fabric-detail/${encodeURIComponent(fabricName)}`
+        const data = await apiGet<FabricDetailData>(
+          `/api/dashboard/fabric-detail/${encodeURIComponent(fabricName)}`
         )
-        if (res.ok) {
-          setData(await res.json())
-        }
+        setData(data)
       } catch (err) {
         console.error(err)
       } finally {

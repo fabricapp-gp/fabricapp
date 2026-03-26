@@ -43,7 +43,9 @@ export default function TestStylePage() {
     
     try {
       // Using standard fetch instead of apiPost to capture RAW response for debugging
-      const res = await fetch("http://localhost:8000/api/studio/styles/add", {
+      // but still using BASE_URL for dynamic endpoint
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_BASE}/api/studio/styles/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newStyle, user: user?.username })

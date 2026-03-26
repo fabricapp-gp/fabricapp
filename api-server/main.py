@@ -30,10 +30,18 @@ from core_logic import (
 
 app = FastAPI(title="FABRICINTEL API")
 
-# Configure CORS to allow any origin (required for Vercel/Cloud hosting)
+# Configure CORS (allow localhost for dev and Vercel for production)
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://fabricapp.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

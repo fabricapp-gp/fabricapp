@@ -34,7 +34,8 @@ export default function TestEmailPage() {
     const receiverList = receivers.split(",").map(r => r.trim()).filter(r => r.length > 0)
     
     try {
-      const res = await fetch("http://localhost:8000/api/email/test", {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_BASE}/api/email/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sender, password, receivers: receiverList })

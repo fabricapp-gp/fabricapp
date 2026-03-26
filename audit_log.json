@@ -16,5 +16,11 @@
     "user": "nishtha",
     "details": "nishtha created user: david (role: Viewer)",
     "timestamp": "26 Mar 2026, 10:45 AM"
+  },
+  {
+    "action": "LOGIN",
+    "user": "nishtha",
+    "details": "nishtha logged in",
+    "timestamp": "26 Mar 2026, 11:01 AM"
   }
 ]
