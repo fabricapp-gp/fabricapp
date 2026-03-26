@@ -145,16 +145,22 @@ def get_14day_avg_forecast(forecast_df: pd.DataFrame, style_family: str) -> Tupl
 
     data = data.sort_values("ds")
     daily = data.groupby("ds")[["yhat", "yhat_lower", "yhat_upper"]].sum()
+    
+    # Clip negative predictions to 0 before taking the mean
+    daily["yhat"] = daily["yhat"].clip(lower=0.0)
+    daily["yhat_lower"] = daily["yhat_lower"].clip(lower=0.0)
+    daily["yhat_upper"] = daily["yhat_upper"].clip(lower=0.0)
+    
     first_14 = daily.head(14)
 
     if first_14.empty:
         return 0.0, 0.0, 0.0
 
-    avg = first_14["yhat"].mean()
-    avg_lower = first_14["yhat_lower"].mean()
-    avg_upper = first_14["yhat_upper"].mean()
+    avg = max(0.0, float(first_14["yhat"].mean()))
+    avg_lower = max(0.0, float(first_14["yhat_lower"].mean()))
+    avg_upper = max(0.0, float(first_14["yhat_upper"].mean()))
 
-    return float(avg), float(avg_lower), float(avg_upper)
+    return avg, avg_lower, avg_upper
 
 
 # ═══════════════════════════════════════════════════
@@ -313,17 +319,18 @@ def calculate_metrics(daily_demand: float, inventory: float, wip_m: float, lead_
     available = inventory + wip_m
 
     if daily_demand <= 0:
-        return available, float("inf"), 0, "Safe"
+        return available, float("inf"), 0.0, "Safe"
 
     coverage = available / daily_demand
     threshold = lead_time + buffer_days
     
     # Required stock = threshold * daily_demand
     required_stock = threshold * daily_demand
-    reorder = max(0.0, required_stock - available)
     
-    if reorder > 0:
-        reorder = max(moq, reorder)
+    reorder = 0.0
+    if available < required_stock:
+        shortfall = required_stock - available
+        reorder = max(moq, shortfall)
 
     # Risk classification
     if coverage < threshold:

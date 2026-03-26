@@ -57,10 +57,10 @@ function DashboardContent() {
   const [selectedFamily, setSelectedFamily] = useState<string>("all")
   const [familyList, setFamilyList] = useState<string[]>([])
 
-  // Inventory edit states (keyed by fabric name)
   const [editedInputs, setEditedInputs] = useState<
     Record<string, { inventory: number; wip: number; lead_time: number; buffer_days: number; moq: number }>
   >({})
+  const [hydrated, setHydrated] = useState(false)
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -71,20 +71,28 @@ function DashboardContent() {
     if (savedSummary) setSummary(JSON.parse(savedSummary))
     if (savedFamilies) setFamilies(JSON.parse(savedFamilies))
     if (savedEdits) setEditedInputs(JSON.parse(savedEdits))
+    
+    setHydrated(true)
   }, [])
 
-  // Save to localStorage when states change
+  // Save to localStorage when states change (only after hydration)
   useEffect(() => {
-    if (summary) localStorage.setItem("fabricintel_dashboard_summary", JSON.stringify(summary))
-  }, [summary])
+    if (hydrated && summary) {
+      localStorage.setItem("fabricintel_dashboard_summary", JSON.stringify(summary))
+    }
+  }, [summary, hydrated])
 
   useEffect(() => {
-    if (families.length > 0) localStorage.setItem("fabricintel_dashboard_families", JSON.stringify(families))
-  }, [families])
+    if (hydrated && families.length > 0) {
+      localStorage.setItem("fabricintel_dashboard_families", JSON.stringify(families))
+    }
+  }, [families, hydrated])
 
   useEffect(() => {
-    localStorage.setItem("fabricintel_dashboard_edits", JSON.stringify(editedInputs))
-  }, [editedInputs])
+    if (hydrated) {
+      localStorage.setItem("fabricintel_dashboard_edits", JSON.stringify(editedInputs))
+    }
+  }, [editedInputs, hydrated])
 
   const fetchData = useCallback(async () => {
     try {
@@ -146,10 +154,66 @@ function DashboardContent() {
     )
   }
 
-  // Derived data
-  const riskCount = summary ? summary.critical_risks + summary.warnings : 0
+  // Derived dynamic summary based on editedInputs
+  const dynamicSummary = useMemo(() => {
+    if (!summary || families.length === 0) return summary
+
+    let total14dDemand = 0
+    let totalReorder = 0
+    let criticalRisks = 0
+    let warnings = 0
+    let totalFabrics = 0
+    let activeStyles = new Set()
+
+    families.forEach((fam) => {
+      const styleDemand = fam.style_demand || 0
+      fam.fabrics.forEach((fab) => {
+        totalFabrics++
+        fab.used_in_styles.forEach((s) => activeStyles.add(s))
+
+        const edited = editedInputs[fab.name] || fab
+        const inventory = edited.inventory
+        const wip = edited.wip
+        const leadTime = edited.lead_time
+        const buffer = edited.buffer_days
+        const moq = edited.moq
+        const demand = fab.daily_demand || 0
+
+        total14dDemand += demand * 14
+
+        const wipMeters = (wip * fab.consumption_cm) / 100.0
+        const available = inventory + wipMeters
+        const threshold = leadTime + buffer
+        const required = threshold * demand
+
+        const coverage = demand > 0 ? available / demand : 999
+
+        if (available < required) {
+          const shortfall = required - available
+          totalReorder += Math.max(moq, shortfall)
+        }
+
+        if (coverage < threshold) {
+          criticalRisks++
+        } else if (coverage < threshold + 3) {
+          warnings++
+        }
+      })
+    })
+
+    return {
+      ...summary,
+      total_14d_demand: total14dDemand,
+      total_reorder: totalReorder,
+      critical_risks: criticalRisks,
+      warnings: warnings,
+      active_styles: activeStyles.size,
+    }
+  }, [summary, families, editedInputs])
+
+  const riskCount = dynamicSummary ? dynamicSummary.critical_risks + dynamicSummary.warnings : 0
   const isHighRisk = riskCount > 5
-  const isStale = summary?.forecast_freshness === "Stale"
+  const isStale = dynamicSummary?.forecast_freshness === "Stale"
   const isEditor = user.role !== "Viewer"
 
   // Filter families and fabrics
@@ -331,23 +395,23 @@ function DashboardContent() {
           ))}
         </div>
       ) : (
-        summary && (
+        dynamicSummary && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Active Styles"
-              value={summary.active_styles}
+              value={dynamicSummary.active_styles}
               icon={<Package size={20} />}
-              description={`${summary.active_families} fabric families`}
+              description={`${dynamicSummary.active_families} fabric families`}
             />
             <MetricCard
               title="14-Day Demand"
-              value={`${Math.round(summary.total_14d_demand)} m`}
+              value={`${Math.round(dynamicSummary.total_14d_demand)} m`}
               icon={<Activity size={20} />}
               description="Summed across all fabrics"
             />
             <MetricCard
               title="Total Reorder"
-              value={`${Math.round(summary.total_reorder)} m`}
+              value={`${Math.round(dynamicSummary.total_reorder)} m`}
               icon={<ShoppingCart size={20} />}
               description="Required raw material"
             />
@@ -356,7 +420,7 @@ function DashboardContent() {
               value={riskCount}
               icon={<AlertTriangle size={20} />}
               trendUp={!isHighRisk}
-              trend={summary.critical_risks + " Critical"}
+              trend={dynamicSummary.critical_risks + " Critical"}
               className={isHighRisk ? "border-destructive/30" : ""}
             />
           </div>
@@ -478,15 +542,57 @@ function DashboardContent() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {fam.fabrics.map((fabric, fIdx) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+                {fam.fabrics.map((fab) => {
+                  const edited = editedInputs[fab.name] || fab
+                  // Dynamically calculate metrics based on current inputs
+                  const inventory = edited.inventory
+                  const wip = edited.wip
+                  const leadTime = edited.lead_time
+                  const buffer = edited.buffer_days
+                  const moq = edited.moq
+                  const demand = fab.daily_demand || 0.0
+                  
+                  const wipMeters = (wip * fab.consumption_cm) / 100.0
+                  const available = inventory + wipMeters
+                  
+                  let coverage = available / demand
+                  if (demand <= 0) coverage = 999.0
+                  
+                  const threshold = leadTime + buffer
+                  const required = threshold * demand
+                  
+                  let reorder = 0.0
+                  if (available < required) {
+                    reorder = Math.max(moq, required - available)
+                  }
+                  
+                  let risk: "Safe" | "Warning" | "Critical" = "Safe"
+                  if (coverage < threshold) risk = "Critical"
+                  else if (coverage < threshold + 3) risk = "Warning"
+
+                  const dynamicFab = {
+                    ...fab,
+                    inventory,
+                    wip,
+                    lead_time: leadTime,
+                    buffer_days: buffer,
+                    moq,
+                    available,
+                    coverage_days: coverage,
+                    reorder_qty: reorder,
+                    status: risk
+                  }
+
+                  return (
                     <FabricCard
-                      key={fIdx}
-                      fabric={fabric}
+                      key={fab.name}
+                      fabric={dynamicFab}
                       onSelectFabric={setSelectedFabric}
                     />
-                  ))}
-                </div>
+                  )
+                })}
+              </div>
 
                 {/* Inline inventory inputs for this family */}
                 {isEditor && (
