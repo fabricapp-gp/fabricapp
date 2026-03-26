@@ -208,6 +208,13 @@ class SaveAllInventoryRequest(BaseModel):
     items: List[SaveInventoryRequest]
 
 
+class DashboardRequest(BaseModel):
+    family: str = ""
+    forecast_data: List[dict] = []
+
+class StudioRequest(BaseModel):
+    forecast_data: List[dict] = []
+
 # ════════════════════════════════════════════════════
 # Data Loaders
 # ════════════════════════════════════════════════════
@@ -226,8 +233,23 @@ def get_mapping() -> pd.DataFrame:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def load_forecast_from_client(forecast_data: List[dict]) -> pd.DataFrame:
+    """Load forecast data sent from the frontend client instead of reading from disk."""
+    try:
+        if not forecast_data:
+            return pd.DataFrame()
+        df = pd.DataFrame(forecast_data)
+        if "ds" in df.columns:
+            df["ds"] = pd.to_datetime(df["ds"])
+        for col in ["yhat", "yhat_lower", "yhat_upper"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
 def load_forecast() -> pd.DataFrame:
-    """Load forecast output CSV."""
+    """Legacy load forecast output CSV (fallback if needed)."""
     try:
         if not os.path.exists(FORECAST_FILE):
             return pd.DataFrame()
@@ -241,13 +263,20 @@ def load_forecast() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_forecast_freshness():
-    """Get forecast file freshness status."""
+def get_forecast_freshness(client_timestamp: str = None):
+    """Get forecast file freshness status. Relies on client timestamp if provided."""
     try:
-        if not os.path.exists(FORECAST_FILE):
+        if client_timestamp:
+            try:
+                last_update = datetime.strptime(client_timestamp, "%d %b %Y, %I:%M %p")
+            except Exception:
+                last_update = datetime.fromisoformat(client_timestamp) if "T" in client_timestamp else datetime.now()
+        elif os.path.exists(FORECAST_FILE):
+            file_time = os.path.getmtime(FORECAST_FILE)
+            last_update = datetime.fromtimestamp(file_time)
+        else:
             return None, None, "Stale"
-        file_time = os.path.getmtime(FORECAST_FILE)
-        last_update = datetime.fromtimestamp(file_time)
+        
         hours_old = (datetime.now() - last_update).total_seconds() / 3600
         days_old = hours_old / 24
         if days_old <= 2:
@@ -410,10 +439,10 @@ async def get_system_metrics():
 # STUDIO ENDPOINTS
 # ════════════════════════════════════════════════════
 
-@app.get("/api/studio/styles")
-async def get_studio_styles():
+@app.post("/api/studio/styles")
+async def get_studio_styles(req: StudioRequest):
     df = get_mapping()
-    forecast_df = load_forecast()
+    forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     
     active = df[df["status"] == "Active"]
     archived = df[df["status"] == "Archived"]
@@ -801,6 +830,7 @@ async def run_forecast():
         "styles_skipped": skipped,
         "total_rows": len(forecast_output),
         "logs": logs,
+        "forecast_data": forecast_output.to_dict(orient="records")
     }
 
 
@@ -817,16 +847,21 @@ async def get_dashboard_families():
     return families
 
 
-@app.get("/api/dashboard/summary")
-async def get_dashboard_summary(family: str = ""):
-    """Control Tower summary with real computed metrics. Optionally filtered to a single family."""
+class DashboardSummaryRequest(BaseModel):
+    family: str = ""
+    forecast_data: List[dict] = []
+    forecast_timestamp: str = ""
+
+@app.post("/api/dashboard/summary")
+async def get_dashboard_summary(req: DashboardSummaryRequest):
+    """Control Tower summary with real computed metrics."""
     mapping_df = get_mapping()
-    forecast_df = load_forecast()
+    forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     saved_inputs = load_saved_inputs()
     
     active_df = mapping_df[mapping_df["status"] == "Active"]
-    if family:
-        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == family.strip().lower()]
+    if req.family:
+        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == req.family.strip().lower()]
     families = sorted(active_df["fabric_family"].dropna().unique())
     
     total_14d_demand: float = 0.0
@@ -835,7 +870,7 @@ async def get_dashboard_summary(family: str = ""):
     warnings: int = 0
     total_fabrics: int = 0
     
-    last_update_dt, hours_old, freshness = get_forecast_freshness()
+    last_update_dt, hours_old, freshness = get_forecast_freshness(req.forecast_timestamp)
     
     for family in families:
         style_demand, _, _ = get_14day_avg_forecast(forecast_df, family)
@@ -884,16 +919,16 @@ async def get_dashboard_summary(family: str = ""):
     }
 
 
-@app.get("/api/dashboard/fabrics")
-async def get_dashboard_fabrics(family: str = ""):
-    """Get active fabric families with demand, risk, and inventory data. Optionally filtered to a single family."""
+@app.post("/api/dashboard/fabrics")
+async def get_dashboard_fabrics(req: DashboardSummaryRequest):
+    """Get active fabric families with demand, risk, and inventory data."""
     mapping_df = get_mapping()
-    forecast_df = load_forecast()
+    forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     saved_inputs = load_saved_inputs()
     
     active_df = mapping_df[mapping_df["status"] == "Active"]
-    if family:
-        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == family.strip().lower()]
+    if req.family:
+        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == req.family.strip().lower()]
     families = sorted(active_df["fabric_family"].dropna().unique())
     
     results = []
@@ -979,11 +1014,14 @@ async def get_fabric_detail(fabric_name: str):
     }
 
 
-@app.get("/api/dashboard/global-demand")
-async def get_global_demand():
+class GlobalDemandRequest(BaseModel):
+    forecast_data: List[dict] = []
+
+@app.post("/api/dashboard/global-demand")
+async def get_global_demand(req: GlobalDemandRequest):
     """Get global fabric demand across all styles."""
     mapping_df = get_mapping()
-    forecast_df = load_forecast()
+    forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     return get_global_fabric_demand(mapping_df, forecast_df)
 
 

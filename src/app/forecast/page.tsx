@@ -41,6 +41,7 @@ interface ForecastResult {
   styles_skipped?: number
   total_rows?: number
   logs?: string[]
+  forecast_data?: any[]
 }
 
 export default function ForecastPage() {
@@ -124,7 +125,12 @@ export default function ForecastPage() {
 
     try {
       const data = await apiPost<ForecastResult>("/api/forecast/run", {})
-      setForecastResult(data)
+      
+      // Stamp the result with the current timestamp so the dashboard knows how fresh it is
+      const timestamp = new Date().toLocaleString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: true })
+      const dataWithTimestamp = { ...data, timestamp }
+      
+      setForecastResult(dataWithTimestamp)
       // Refresh status
       const statusData = await apiGet<ForecastStatus>("/api/forecast/status")
       setForecastStatus(statusData)

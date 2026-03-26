@@ -70,7 +70,14 @@ export default function StudioPage() {
 
   const fetchStyles = useCallback(async () => {
     try {
-      const data = await apiGet<{ active: StyleRow[]; archived: StyleRow[]; total: number }>("/api/studio/styles")
+      const savedResult = localStorage.getItem("fabricintel_forecast_result")
+      const parsedResult = savedResult ? JSON.parse(savedResult) : null
+      const forecastData = parsedResult?.forecast_data || []
+
+      const data = await apiPost<{ active: StyleRow[]; archived: StyleRow[]; total: number }>(
+        "/api/studio/styles",
+        { forecast_data: forecastData }
+      )
       setActiveStyles(data.active)
       setArchivedStyles(data.archived)
     } catch (e: unknown) {

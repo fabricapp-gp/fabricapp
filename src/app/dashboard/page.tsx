@@ -96,10 +96,20 @@ function DashboardContent() {
 
   const fetchData = useCallback(async () => {
     try {
-      const familyParam = selectedFamily !== "all" ? `?family=${encodeURIComponent(selectedFamily)}` : ""
+      const savedResult = localStorage.getItem("fabricintel_forecast_result")
+      const parsedResult = savedResult ? JSON.parse(savedResult) : null
+      const forecastData = parsedResult?.forecast_data || []
+      const timestamp = parsedResult?.timestamp || ""
+
+      const payload = {
+        family: selectedFamily !== "all" ? selectedFamily : "",
+        forecast_data: forecastData,
+        forecast_timestamp: timestamp
+      }
+
       const [summaryData, familiesData] = await Promise.all([
-        apiGet<DashboardSummary>("/api/dashboard/summary"),
-        apiGet<FamilyResult[]>(`/api/dashboard/fabrics${familyParam}`),
+        apiPost<DashboardSummary>("/api/dashboard/summary", payload),
+        apiPost<FamilyResult[]>("/api/dashboard/fabrics", payload),
       ])
 
       // Defensive: Only update if we got real data or if we don't have anything cached yet
