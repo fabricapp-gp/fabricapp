@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { MetricCard } from "@/components/MetricCard"
 import { FabricCard, type FabricData } from "@/components/FabricCard"
@@ -16,6 +17,7 @@ import {
   Save,
   Layers,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react"
 import { apiGet, apiPost } from "@/lib/api"
 
@@ -39,8 +41,10 @@ interface FamilyResult {
   fabrics: FabricData[]
 }
 
-export default function Dashboard() {
+function DashboardContent() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const familyFilter = searchParams.get("family")
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [families, setFamilies] = useState<FamilyResult[]>([])
@@ -87,6 +91,23 @@ export default function Dashboard() {
       .catch((err: unknown) => console.error("Failed to fetch families", err))
   }, [user])
 
+  // Automatic scrolling and highlighting logic
+  useEffect(() => {
+    if (familyFilter && families.length > 0) {
+      const elementId = `family-group-${familyFilter.replace(/\s+/g, '-').toLowerCase()}`
+      const element = document.getElementById(elementId)
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "center" })
+          element.classList.add("ring-2", "ring-primary", "ring-offset-8", "rounded-2xl")
+          setTimeout(() => {
+            element.classList.remove("ring-2", "ring-primary", "ring-offset-8")
+          }, 4000)
+        }, 800)
+      }
+    }
+  }, [familyFilter, families])
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -116,14 +137,15 @@ export default function Dashboard() {
           if (!editedInputs[fab.name]) return fab
 
           const edited = editedInputs[fab.name]
-          const available = edited.inventory + edited.wip
+          const available = edited.inventory + (edited.wip * (fab.consumption_cm / 100))
           const coverage_days = fab.daily_demand > 0 ? available / fab.daily_demand : 999
           
           const threshold = edited.lead_time + edited.buffer_days
           const status = (coverage_days < threshold ? "Critical" : coverage_days < threshold + 3 ? "Warning" : "Safe") as "Safe" | "Warning" | "Critical"
           
-          const required_14d = fab.daily_demand * 14
-          let reorder_qty = Math.max(0, required_14d - available)
+          // Reorder logic matches core_logic.py (LeadTime + Buffer) * Demand
+          const required_stock = threshold * fab.daily_demand
+          let reorder_qty = Math.max(0, required_stock - available)
           if (reorder_qty > 0) reorder_qty = Math.max(edited.moq, reorder_qty)
 
           return { ...fab, ...edited, available, coverage_days, status, reorder_qty }
@@ -205,7 +227,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Control Tower</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">Control Tower</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Real-time supply chain overview and inventory risks.
           </p>
@@ -415,7 +437,11 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-12">
             {filteredFamilies.map((fam, idx) => (
-              <div key={idx} className="space-y-4">
+              <div 
+                key={idx} 
+                id={`family-group-${fam.family.replace(/\s+/g, '-').toLowerCase()}`}
+                className="space-y-4 scroll-mt-32 transition-all duration-1000 p-2"
+              >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-foreground capitalize">
                     {fam.family}{" "}
@@ -447,8 +473,9 @@ export default function Dashboard() {
 
                 {/* Inline inventory inputs for this family */}
                 {isEditor && !isStale && (
-                  <details className="bg-secondary/10 rounded-xl border border-border/30">
-                    <summary className="p-4 text-sm font-semibold text-muted-foreground cursor-pointer hover:bg-secondary/20 transition-colors">
+                  <details className="bg-secondary/5 rounded-xl border border-border/30 overflow-hidden shadow-sm">
+                    <summary className="p-4 text-sm font-semibold text-muted-foreground cursor-pointer hover:bg-secondary/10 transition-colors list-none flex items-center gap-2">
+                      <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
                       ✏️ Edit Inventory Inputs for {fam.family}
                     </summary>
                     <div className="p-4 pt-0 space-y-3">
@@ -485,12 +512,12 @@ export default function Dashboard() {
                                     },
                                   }))
                                 }
-                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm"
+                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
                               />
                             </div>
                             <div>
                               <label className="text-xs text-muted-foreground">
-                                WIP (m)
+                                WIP (pcs)
                               </label>
                               <input
                                 type="number"
@@ -505,7 +532,7 @@ export default function Dashboard() {
                                     },
                                   }))
                                 }
-                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm"
+                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
                               />
                             </div>
                             <div>
@@ -525,7 +552,7 @@ export default function Dashboard() {
                                     },
                                   }))
                                 }
-                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm"
+                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
                               />
                             </div>
                             <div>
@@ -545,7 +572,7 @@ export default function Dashboard() {
                                     },
                                   }))
                                 }
-                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm"
+                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
                               />
                             </div>
                             <div>
@@ -565,7 +592,7 @@ export default function Dashboard() {
                                     },
                                   }))
                                 }
-                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm"
+                                className="w-full bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
                               />
                             </div>
                           </div>
@@ -596,5 +623,20 @@ export default function Dashboard() {
         />
       )}
     </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+       <div className="flex h-screen items-center justify-center p-8 bg-background">
+          <div className="flex flex-col items-center gap-6">
+            <RefreshCw className="h-12 w-12 animate-spin text-primary opacity-50" />
+            <p className="text-lg font-bold tracking-tight text-muted-foreground animate-pulse">Initializing Control Tower...</p>
+          </div>
+        </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }

@@ -121,7 +121,7 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
           <div className="flex items-center space-x-1">
             <Truck size={14} className="text-purple-400" />
             <span className="font-semibold text-sm">
-              {fabric.wip.toFixed(1)} m
+              {fabric.wip.toFixed(0)} pcs
             </span>
           </div>
         </div>

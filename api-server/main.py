@@ -413,15 +413,17 @@ async def get_system_metrics():
 @app.get("/api/studio/styles")
 async def get_studio_styles():
     df = get_mapping()
+    forecast_df = load_forecast()
     
     active = df[df["status"] == "Active"]
     archived = df[df["status"] == "Archived"]
     
-    # Convert to records with cleaned fabric names (remove empty/"0")
+    # Convert to records with cleaned fabric names and include demand
     def clean_row(row):
         result = {}
         result["style_name"] = str(row.get("style_name", ""))
-        result["fabric_family"] = str(row.get("fabric_family", ""))
+        family = str(row.get("fabric_family", ""))
+        result["fabric_family"] = family
         result["main1_name"] = str(row.get("main1_name", "")) if row.get("main1_name") else ""
         result["main1_cm"] = safe_float(row.get("main1_cm", 0))
         result["main2_name"] = str(row.get("main2_name", "")) if row.get("main2_name") else ""
@@ -431,6 +433,11 @@ async def get_studio_styles():
         result["last_updated_by"] = str(row.get("last_updated_by", "")) if pd.notna(row.get("last_updated_by")) else ""
         result["last_updated_time"] = str(row.get("last_updated_time", "")) if pd.notna(row.get("last_updated_time")) else ""
         result["status"] = str(row.get("status", "Active"))
+        
+        # Get demand for this family if available
+        avg_demand, _, _ = get_14day_avg_forecast(forecast_df, family)
+        result["predicted_demand"] = round(avg_demand, 1) if avg_demand is not None else 0.0
+        
         return result
     
     active_rows = [clean_row(row) for _, row in active.iterrows()]
@@ -441,6 +448,40 @@ async def get_studio_styles():
         "archived": archived_rows,
         "total": len(df),
     }
+
+
+@app.patch("/api/studio/styles/update")
+async def update_style(req: StyleAddRequest):
+    df = get_mapping()
+    if req.style_name not in df["style_name"].values:
+        raise HTTPException(status_code=404, detail="Style not found")
+    
+    # Standardize fabric names
+    fabric1_clean = standardize_fabric_name(req.fabric1)
+    fabric2_clean = standardize_fabric_name(req.fabric2)
+    lining_clean = standardize_fabric_name(req.lining)
+    
+    # Normalize family name
+    fabric_family = req.fabric_family.strip() if req.fabric_family.strip() else normalize_style_name(req.style_name)
+    current_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    
+    mask = df["style_name"] == req.style_name
+    df.loc[mask, "fabric_family"] = fabric_family
+    df.loc[mask, "main1_name"] = fabric1_clean
+    df.loc[mask, "main1_cm"] = req.fabric1_cm if fabric1_clean else 0
+    df.loc[mask, "main2_name"] = fabric2_clean
+    df.loc[mask, "main2_cm"] = req.fabric2_cm if fabric2_clean else 0
+    df.loc[mask, "lining_name"] = lining_clean
+    df.loc[mask, "lining_cm"] = req.lining_cm if lining_clean else 0
+    df.loc[mask, "last_updated_by"] = req.user
+    df.loc[mask, "last_updated_time"] = current_time
+    
+    save_df = denormalize_for_save(df)
+    save_df.to_csv(MAPPING_FILE, index=False)
+    
+    _append_audit("UPDATE_BOM", req.user, f"{req.user} updated BOM for style: {req.style_name}")
+    
+    return {"success": True, "message": "Style BOM updated successfully"}
 
 
 @app.post("/api/studio/styles/archive")
@@ -809,15 +850,17 @@ async def get_dashboard_summary(family: str = ""):
             total_14d_demand = total_14d_demand + (demand_daily * 14)
             
             # Use saved inputs or defaults
-            inp = saved_inputs.get(fab["name"], {})
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
             buffer = inp.get("buffer_days", 2)
             moq = inp.get("moq", 50.0)
             
+            # Convert WIP (pcs) to WIP (m) using consumption_cm
+            wip_m = (wip * fab.get("consumption_cm", 0)) / 100.0
+            
             _, coverage, reorder, risk = calculate_metrics(
-                demand_daily, inv, wip, lead, buffer, moq
+                demand_daily, inv, wip_m, lead, buffer, moq
             )
             total_reorder = total_reorder + float(reorder)
             
@@ -869,15 +912,17 @@ async def get_dashboard_fabrics(family: str = ""):
             demand_14d = demand_daily * 14
             
             # Use saved inputs or defaults
-            inp = saved_inputs.get(fab["name"], {})
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
             buffer = inp.get("buffer_days", 2)
             moq = inp.get("moq", 50.0)
             
+            # Convert WIP (pcs) to WIP (m)
+            wip_m = (wip * fab["consumption_cm"]) / 100.0
+            
             available, coverage, reorder, risk = calculate_metrics(
-                demand_daily, inv, wip, lead, buffer, moq
+                demand_daily, inv, wip_m, lead, buffer, moq
             )
             
             family_fabrics.append({

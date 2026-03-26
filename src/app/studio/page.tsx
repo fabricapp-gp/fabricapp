@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -27,9 +28,11 @@ interface StyleRow {
   last_updated_by: string
   last_updated_time: string
   status: string
+  predicted_demand: number
 }
 
 export default function StudioPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const [activeStyles, setActiveStyles] = useState<StyleRow[]>([])
   const [archivedStyles, setArchivedStyles] = useState<StyleRow[]>([])
@@ -39,7 +42,7 @@ export default function StudioPage() {
   const [toastMsg, setToastMsg] = useState("")
   const [toastType, setToastType] = useState<"success" | "error">("success")
 
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddForm, setShowAddForm] = useState<false | "ADD" | "EDIT">(false)
   const [newStyle, setNewStyle] = useState({
     style_name: "",
     fabric_family: "",
@@ -67,7 +70,7 @@ export default function StudioPage() {
 
   const fetchStyles = useCallback(async () => {
     try {
-      const data = await apiGet<{ active: StyleRow[]; archived: StyleRow[] }>("/api/studio/styles")
+      const data = await apiGet<{ active: StyleRow[]; archived: StyleRow[]; total: number }>("/api/studio/styles")
       setActiveStyles(data.active)
       setArchivedStyles(data.archived)
     } catch (e: unknown) {
@@ -125,18 +128,20 @@ export default function StudioPage() {
       errors.push("Lining consumption must be > 0")
     }
 
-    // Check duplicate
-    const existing = activeStyles
-      .concat(archivedStyles)
-      .map((s) => s.style_name.toLowerCase().trim())
-    if (existing.includes(newStyle.style_name.toLowerCase().trim())) {
-      errors.push(`Style "${newStyle.style_name}" already exists`)
+    // Check duplicate ONLY IF ADDING
+    if (showAddForm === "ADD") {
+      const existing = activeStyles
+        .concat(archivedStyles)
+        .map((s) => s.style_name.toLowerCase().trim())
+      if (existing.includes(newStyle.style_name.toLowerCase().trim())) {
+        errors.push(`Style "${newStyle.style_name}" already exists`)
+      }
     }
 
     return errors
   }
 
-  const handleAddStyle = async (e: React.FormEvent) => {
+  const handleSaveStyle = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const errors = validateForm()
@@ -146,9 +151,23 @@ export default function StudioPage() {
 
     setAdding(true)
     try {
-      await apiPost("/api/studio/styles/add", { ...newStyle, user: user?.username })
+      const endpoint = showAddForm === "EDIT" ? "/api/studio/styles/update" : "/api/studio/styles/add"
+      const method = showAddForm === "EDIT" ? "PATCH" : "POST"
       
-      showToast("Style BOM saved successfully!")
+      // We'll use apiPost for both since our lib helper handles it, but maybe update lib to allow method choice
+      // Actually our apiPost is a wrapper for POST. Let's assume we use it or add a custom fetch.
+      // For now, let's use a standard fetch or assume our backend accepts POST for update too if we change it.
+      // Better: I'll use fetch directly or fix the helper if needed.
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${endpoint}`, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...newStyle, user: user?.username })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Failed to save");
+
+      showToast(`${newStyle.style_name} ${showAddForm === "EDIT" ? "updated" : "saved"} successfully!`)
       setNewStyle({
         style_name: "",
         fabric_family: "",
@@ -168,6 +187,22 @@ export default function StudioPage() {
     } finally {
       setAdding(false)
     }
+  }
+
+  const handleEditClick = (row: StyleRow) => {
+    setNewStyle({
+      style_name: row.style_name,
+      fabric_family: row.fabric_family,
+      fabric1: row.main1_name,
+      fabric1_cm: row.main1_cm,
+      fabric2: row.main2_name,
+      fabric2_cm: row.main2_cm,
+      lining: row.lining_name,
+      lining_cm: row.lining_cm,
+    })
+    setShowAddForm("EDIT")
+    setFormErrors([])
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   // CSV Upload handlers
@@ -266,10 +301,10 @@ export default function StudioPage() {
       {/* Toast */}
       {toastMsg && (
         <div
-          className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium animate-in slide-in-from-top-2 ${
+          className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium animate-in slide-in-from-top-2 z-50 fixed top-4 right-4 ${
             toastType === "success"
-              ? "bg-safe/20 text-safe border border-safe/30"
-              : "bg-destructive/20 text-destructive border border-destructive/30"
+              ? "bg-safe/20 text-safe border border-safe/30 shadow-lg shadow-safe/10 backdrop-blur-md"
+              : "bg-destructive/20 text-destructive border border-destructive/30 shadow-lg shadow-destructive/10 backdrop-blur-md"
           }`}
         >
           {toastType === "success" ? (
@@ -318,18 +353,33 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Add Style Form + CSV Upload */}
+      {/* Add/Edit Style Form + CSV Upload */}
       {isEditor && (
         <div className="space-y-4">
           {/* Add Style BOM */}
-          <div className="border border-border/50 rounded-xl overflow-hidden bg-card/40 backdrop-blur-sm">
+          <div className="border border-border/50 rounded-xl overflow-hidden bg-card/40 backdrop-blur-sm shadow-xl shadow-black/5">
             <button
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={() => {
+                if (showAddForm === "ADD") setShowAddForm(false)
+                else {
+                  setShowAddForm("ADD")
+                  setNewStyle({
+                    style_name: "",
+                    fabric_family: "",
+                    fabric1: "",
+                    fabric1_cm: 0,
+                    fabric2: "",
+                    fabric2_cm: 0,
+                    lining: "",
+                    lining_cm: 0,
+                  })
+                }
+              }}
               className="w-full flex items-center justify-between p-4 hover:bg-secondary/20 transition-colors"
             >
               <span className="font-semibold flex items-center space-x-2">
                 <Plus size={18} />
-                <span>Add New Style BOM</span>
+                <span>{showAddForm === "EDIT" ? `Editing BOM: ${newStyle.style_name}` : "Add New Style BOM"}</span>
               </span>
               <span className="text-muted-foreground text-sm">
                 {showAddForm ? "Collapse" : "Expand"}
@@ -353,15 +403,16 @@ export default function StudioPage() {
                   </div>
                 )}
 
-                <form onSubmit={handleAddStyle} className="space-y-4">
+                <form onSubmit={handleSaveStyle} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-foreground">
-                        Style Name <span className="text-destructive">*</span>
+                        Style Name {showAddForm === "ADD" && <span className="text-destructive">*</span>}
                       </label>
                       <input
                         type="text"
                         value={newStyle.style_name}
+                        disabled={showAddForm === "EDIT"}
                         onChange={(e) =>
                           setNewStyle({
                             ...newStyle,
@@ -369,7 +420,7 @@ export default function StudioPage() {
                           })
                         }
                         placeholder="e.g. Bianca Top"
-                        className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                       />
                     </div>
                     <div>
@@ -505,14 +556,23 @@ export default function StudioPage() {
                     </div>
                   </div>
 
-                  <div className="pt-2">
+                  <div className="pt-2 flex gap-3">
                     <button
                       type="submit"
                       disabled={adding}
-                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+                      className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                     >
-                      {adding ? "Saving..." : "Save Style BOM"}
+                      {adding ? "Saving..." : showAddForm === "EDIT" ? "Update Style BOM" : "Save Style BOM"}
                     </button>
+                    {showAddForm === "EDIT" && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddForm(false)}
+                          className="px-4 py-2.5 rounded-md text-sm font-medium border border-border hover:bg-secondary/20 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -541,12 +601,16 @@ export default function StudioPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Upload a CSV file with BOM data
                   </p>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvSelect}
-                    className="text-sm"
-                  />
+                  <label className="cursor-pointer bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Choose File
+                    <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCsvSelect}
+                        className="hidden"
+                    />
+                  </label>
+                  {csvFile && <div className="mt-2 text-xs font-medium text-primary">{csvFile.name}</div>}
                 </div>
 
                 {csvColumns.length > 0 && (
@@ -581,12 +645,13 @@ export default function StudioPage() {
       )}
 
       {/* Data Table */}
-      <div className="border border-border/50 rounded-xl overflow-hidden bg-card/40 backdrop-blur-sm">
+      <div className="border border-border/50 rounded-xl overflow-hidden bg-card/40 backdrop-blur-sm shadow-xl shadow-black/5">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-secondary/50 text-muted-foreground uppercase text-xs font-semibold tracking-wider">
               <tr>
                 <th className="px-6 py-4">Style Info</th>
+                <th className="px-6 py-4">Demand (14d)</th>
                 <th className="px-6 py-4">Main Fabrics</th>
                 <th className="px-6 py-4">Lining</th>
                 <th className="px-6 py-4">Last Updated</th>
@@ -597,20 +662,20 @@ export default function StudioPage() {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={5}
-                    className="px-6 py-8 text-center text-muted-foreground"
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-muted-foreground"
                   >
-                    <RefreshCw className="mx-auto h-6 w-6 animate-spin mb-2" />
-                    Loading BOM data...
+                    <RefreshCw className="mx-auto h-8 w-8 animate-spin mb-4 text-primary" />
+                    <p className="font-medium">Loading BOM repository...</p>
                   </td>
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
-                    className="px-6 py-8 text-center text-muted-foreground border-dashed border-t border-border/50"
+                    colSpan={6}
+                    className="px-6 py-16 text-center text-muted-foreground border-dashed border-t border-border/50"
                   >
-                    No styles found.
+                    No styles matching your search.
                   </td>
                 </tr>
               ) : (
@@ -622,14 +687,24 @@ export default function StudioPage() {
                   return (
                     <tr
                       key={i}
-                      className="hover:bg-secondary/20 transition-colors"
+                      className="group hover:bg-secondary/20 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-foreground">
+                        <div className="font-bold text-foreground group-hover:text-primary transition-colors">
                           {row.style_name}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                           {row.fabric_family || "No Family"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                            <span className={`text-sm font-bold ${row.predicted_demand > 0 ? "text-primary" : "text-muted-foreground opacity-40"}`}>
+                                {row.predicted_demand.toFixed(1)}m
+                            </span>
+                            <span className="text-[10px] uppercase text-muted-foreground opacity-60">
+                                Total Family Demand
+                            </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -661,10 +736,10 @@ export default function StudioPage() {
                       </td>
                       <td className="px-6 py-4">
                         {lining ? (
-                          <div className="flex items-center text-xs border border-border px-2 py-0.5 rounded-full w-max">
+                          <div className="flex items-center text-xs border border-border/50 px-2 py-0.5 rounded-full w-max bg-secondary/10">
                             <span className="capitalize">{lining}</span>
-                            <span className="ml-1 text-muted-foreground">
-                              ({row.lining_cm}cm)
+                            <span className="ml-2 text-muted-foreground">
+                              {row.lining_cm}cm
                             </span>
                           </div>
                         ) : (
@@ -675,41 +750,61 @@ export default function StudioPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-xs">
-                          <div className="text-foreground">
+                          <div className="text-foreground font-medium">
                             {row.last_updated_by || "—"}
                           </div>
-                          <div className="text-muted-foreground">
+                          <div className="text-muted-foreground text-[10px]">
                             {row.last_updated_time || "—"}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         {isEditor ? (
-                          <button
-                            onClick={() =>
-                              handleToggleArchive(
-                                row.style_name,
-                                activeTab === "ACTIVE"
-                              )
-                            }
-                            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                              activeTab === "ACTIVE"
-                                ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
-                                : "bg-safe/10 text-safe hover:bg-safe/20"
-                            }`}
-                          >
-                            {activeTab === "ACTIVE" ? (
-                              <>
-                                <Archive size={14} />
-                                <span>Archive</span>
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw size={14} />
-                                <span>Restore</span>
-                              </>
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                const url = `/dashboard?family=${encodeURIComponent(row.fabric_family)}`
+                                router.push(url)
+                              }}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold"
+                              title="View Planning in Dashboard"
+                            >
+                              👁️ Planning
+                            </button>
+                            {activeTab === "ACTIVE" && (
+                              <button
+                                onClick={() => handleEditClick(row)}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-xs font-semibold"
+                              >
+                                ✏️ Edit BOM
+                              </button>
                             )}
-                          </button>
+                            <button
+                              onClick={() =>
+                                handleToggleArchive(
+                                  row.style_name,
+                                  activeTab === "ACTIVE"
+                                )
+                              }
+                              className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+                                activeTab === "ACTIVE"
+                                  ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                                  : "bg-safe/10 text-safe hover:bg-safe/20"
+                              }`}
+                            >
+                              {activeTab === "ACTIVE" ? (
+                                <>
+                                  <Archive size={14} />
+                                  <span>Archive</span>
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw size={14} />
+                                  <span>Restore</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         ) : (
                           <Badge variant="outline" className="opacity-50">
                             View Only

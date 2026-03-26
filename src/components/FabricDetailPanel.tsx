@@ -132,7 +132,7 @@ export function FabricDetailPanel({ fabricName, onClose }: FabricDetailPanelProp
                   <Truck size={14} className="text-purple-400" />
                   <span className="text-xs text-muted-foreground">WIP:</span>
                   <span className="text-sm font-semibold">
-                    {data.saved_inputs.wip} m
+                    {data.saved_inputs.wip} pcs
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

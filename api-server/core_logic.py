@@ -317,9 +317,11 @@ def calculate_metrics(daily_demand: float, inventory: float, wip_m: float, lead_
 
     coverage = available / daily_demand
     threshold = lead_time + buffer_days
-    required_14d = daily_demand * 14
-    reorder = max(0.0, required_14d - available)
-
+    
+    # Required stock = threshold * daily_demand
+    required_stock = threshold * daily_demand
+    reorder = max(0.0, required_stock - available)
+    
     if reorder > 0:
         reorder = max(moq, reorder)
 
