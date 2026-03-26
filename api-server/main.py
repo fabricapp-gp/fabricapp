@@ -850,6 +850,7 @@ async def get_dashboard_summary(family: str = ""):
             total_14d_demand = total_14d_demand + (demand_daily * 14)
             
             # Use saved inputs or defaults
+            inp = saved_inputs.get(fab["name"], {})
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
@@ -912,6 +913,7 @@ async def get_dashboard_fabrics(family: str = ""):
             demand_14d = demand_daily * 14
             
             # Use saved inputs or defaults
+            inp = saved_inputs.get(fab["name"], {})
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
