@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { TestTube, Server, Send, AlertCircle, CheckCircle, Lock, Code } from "lucide-react"
-import { apiPost } from "@/lib/api"
+import { apiPost, apiFetch } from "@/lib/api"
 
 export default function TestStylePage() {
   const { user } = useAuth()
@@ -44,21 +44,13 @@ export default function TestStylePage() {
     try {
       // Using standard fetch instead of apiPost to capture RAW response for debugging
       // but still using BASE_URL for dynamic endpoint
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${API_BASE}/api/studio/styles/add`, {
+      const data = await apiFetch<any>("/api/studio/styles/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newStyle, user: user?.username })
       })
       
-      const data = await res.json()
       setRawResponse(JSON.stringify(data, null, 2))
-      
-      if (res.ok) {
-        setResult({ success: true, message: data.message })
-      } else {
-        setResult({ success: false, message: data.detail || "Validation Error", detail: data.detail })
-      }
+      setResult({ success: true, message: data.message })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Network Error"
       setRawResponse(msg)

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { Mail, Send, AlertCircle, CheckCircle, Lock } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
 export default function TestEmailPage() {
   const { user } = useAuth()
@@ -34,19 +35,12 @@ export default function TestEmailPage() {
     const receiverList = receivers.split(",").map(r => r.trim()).filter(r => r.length > 0)
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${API_BASE}/api/email/test`, {
+      const data = await apiFetch<any>("/api/email/test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sender, password, receivers: receiverList })
       })
       
-      const data = await res.json()
-      if (res.ok) {
-        setResult({ success: true, message: data.message })
-      } else {
-        setResult({ success: false, message: data.detail || "Unknown error occurred" })
-      }
+      setResult({ success: true, message: data.message })
     } catch (err) {
       const error = err as Error
       setResult({ success: false, message: error.message || "Failed to connect to API" })

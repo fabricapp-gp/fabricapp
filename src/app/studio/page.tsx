@@ -14,7 +14,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react"
-import { apiGet, apiPost, apiUpload } from "@/lib/api"
+import { apiGet, apiPost, apiUpload, apiFetch } from "@/lib/api"
 
 interface StyleRow {
   style_name: string
@@ -166,13 +166,10 @@ export default function StudioPage() {
       // For now, let's use a standard fetch or assume our backend accepts POST for update too if we change it.
       // Better: I'll use fetch directly or fix the helper if needed.
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${endpoint}`, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...newStyle, user: user?.username })
+      const data = await apiFetch<any>(endpoint, {
+        method,
+        body: JSON.stringify({ ...newStyle, user: user?.username })
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Failed to save");
 
       showToast(`${newStyle.style_name} ${showAddForm === "EDIT" ? "updated" : "saved"} successfully!`)
       setNewStyle({
