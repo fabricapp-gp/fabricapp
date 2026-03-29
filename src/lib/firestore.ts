@@ -78,3 +78,38 @@ export async function loadDashboardCache(): Promise<{ summary: unknown; families
     return null
   }
 }
+
+// ─── Studio Overrides ───────────────────────────────────
+
+export interface StudioOverrides {
+  added: Record<string, unknown>[]
+  updated: Record<string, Record<string, unknown>>
+  archived: Record<string, boolean>
+}
+
+export async function saveStudioOverrides(overrides: StudioOverrides): Promise<void> {
+  try {
+    await setDoc(doc(db, "fabricintel", "studio_overrides"), overrides, { merge: true })
+  } catch (err) {
+    console.error("Firestore saveStudioOverrides error:", err)
+  }
+}
+
+export async function loadStudioOverrides(): Promise<StudioOverrides> {
+  const defaultOverrides = { added: [], updated: {}, archived: {} }
+  try {
+    const snap = await getDoc(doc(db, "fabricintel", "studio_overrides"))
+    if (snap.exists()) {
+      const data = snap.data() as Partial<StudioOverrides>
+      return {
+        added: data.added || [],
+        updated: data.updated || {},
+        archived: data.archived || {}
+      }
+    }
+    return defaultOverrides
+  } catch (err) {
+    console.error("Firestore loadStudioOverrides error:", err)
+    return defaultOverrides
+  }
+}

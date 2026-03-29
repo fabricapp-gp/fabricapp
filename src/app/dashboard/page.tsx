@@ -94,14 +94,18 @@ function DashboardContent() {
 
   const fetchData = useCallback(async () => {
     try {
+      const { loadForecastResult, loadStudioOverrides } = await import("@/lib/firestore")
       const parsedResult = await loadForecastResult()
       const forecastData = (parsedResult?.forecast_data as Record<string, unknown>[]) || []
       const timestamp = (parsedResult?.timestamp as string) || ""
+      
+      const studioOverrides = await loadStudioOverrides()
 
       const payload = {
         family: selectedFamily !== "all" ? selectedFamily : "",
         forecast_data: forecastData,
-        forecast_timestamp: timestamp
+        forecast_timestamp: timestamp,
+        studio_overrides: studioOverrides
       }
 
       const [summaryData, familiesData] = await Promise.all([

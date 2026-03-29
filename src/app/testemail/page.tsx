@@ -169,14 +169,18 @@ export default function TestEmailPage() {
             <pre className="text-xs bg-background p-4 rounded-md border border-border overflow-x-auto text-primary/80">
 {`[
   {
-    "style": "Test Style Alpha",
+    "family": "Halo Collection",
     "fabric": "Main Fabric A",
-    "qty": 150
+    "reorder": 150.5,
+    "lead_time": 14,
+    "coverage": 3.2
   },
   {
-    "style": "Test Style Alpha",
+    "family": "Onyx Setup",
     "fabric": "Lining Fabric B",
-    "qty": 45
+    "reorder": 45.0,
+    "lead_time": 7,
+    "coverage": 1.1
   }
 ]`}
             </pre>

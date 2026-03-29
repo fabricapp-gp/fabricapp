@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from "lucide-react"
 import { apiGet, apiPost, apiUpload, apiFetch } from "@/lib/api"
+import { StudioOverrides } from "@/lib/firestore"
 
 interface StyleRow {
   style_name: string
@@ -61,6 +62,9 @@ export default function StudioPage() {
   const [csvColumns, setCsvColumns] = useState<string[]>([])
   const [csvRowCount, setCsvRowCount] = useState(0)
   const [csvFile, setCsvFile] = useState<File | null>(null)
+  
+  // Persistent override state for Vercel restarts
+  const [studioOverrides, setStudioOverrides] = useState<StudioOverrides>({ added: [], updated: {}, archived: {} })
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToastMsg(msg)
@@ -68,15 +72,18 @@ export default function StudioPage() {
     setTimeout(() => setToastMsg(""), 4000)
   }
 
-  const fetchStyles = useCallback(async () => {
+  const fetchStyles = useCallback(async (currentOverrides?: StudioOverrides) => {
     try {
-      const { loadForecastResult } = await import("@/lib/firestore")
+      const { loadForecastResult, loadStudioOverrides } = await import("@/lib/firestore")
       const parsedResult = await loadForecastResult()
       const forecastData = (parsedResult?.forecast_data as Record<string, unknown>[]) || []
+      
+      const activeOverrides = currentOverrides || await loadStudioOverrides()
+      if (!currentOverrides) setStudioOverrides(activeOverrides)
 
       const data = await apiPost<{ active: StyleRow[]; archived: StyleRow[]; total: number }>(
         "/api/studio/styles",
-        { forecast_data: forecastData }
+        { forecast_data: forecastData, studio_overrides: activeOverrides }
       )
       setActiveStyles(data.active)
       setArchivedStyles(data.archived)
@@ -95,15 +102,24 @@ export default function StudioPage() {
     if (!user || user.role === "Viewer") return
 
     try {
+      const newOverrides = { 
+        ...studioOverrides, 
+        archived: { ...studioOverrides.archived, [styleName]: archive } 
+      }
+      setStudioOverrides(newOverrides)
+      const { saveStudioOverrides } = await import("@/lib/firestore")
+      await saveStudioOverrides(newOverrides)
+
       await apiPost("/api/studio/styles/archive", {
         style_name: styleName,
         archive,
         user: user.username,
+        studio_overrides: newOverrides,
       })
       showToast(
         `${styleName} successfully ${archive ? "archived" : "restored"}.`
       )
-      void fetchStyles()
+      void fetchStyles(newOverrides)
     } catch (e: unknown) {
       console.error(e)
     }
@@ -174,10 +190,38 @@ export default function StudioPage() {
         fabric2_cm: Number(newStyle.fabric2_cm) * 100,
         lining_cm: Number(newStyle.lining_cm) * 100,
       }
+      
+      const newOverrides = { ...studioOverrides }
+      if (showAddForm === "EDIT") {
+        newOverrides.updated = { 
+          ...newOverrides.updated, 
+          [newStyle.style_name]: {
+            ...payload,
+            main1_name: payload.fabric1, main1_cm: payload.fabric1_cm,
+            main2_name: payload.fabric2, main2_cm: payload.fabric2_cm,
+            lining_name: payload.lining, lining_cm: payload.lining_cm
+          } 
+        }
+      } else {
+        newOverrides.added = [...newOverrides.added, {
+          style_name: payload.style_name,
+          fabric_family: payload.fabric_family || payload.style_name,
+          main1_name: payload.fabric1, main1_cm: payload.fabric1_cm,
+          main2_name: payload.fabric2, main2_cm: payload.fabric2_cm,
+          lining_name: payload.lining, lining_cm: payload.lining_cm,
+          status: "Active",
+          last_updated_by: user?.username,
+        }]
+      }
+      setStudioOverrides(newOverrides)
+      const { saveStudioOverrides } = await import("@/lib/firestore")
+      await saveStudioOverrides(newOverrides)
+
+      const payloadWithOverrides = { ...payload, studio_overrides: newOverrides }
 
       const data = await apiFetch<any>(endpoint, {
         method,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payloadWithOverrides)
       });
 
       showToast(`${newStyle.style_name} ${showAddForm === "EDIT" ? "updated" : "saved"} successfully!`)
@@ -193,7 +237,7 @@ export default function StudioPage() {
       })
       setFormErrors([])
       setShowAddForm(false)
-      void fetchStyles()
+      void fetchStyles(newOverrides)
     } catch (err: unknown) {
       console.error(err)
       showToast(err instanceof Error ? err.message : "Failed to save style", "error")

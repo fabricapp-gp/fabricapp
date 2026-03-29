@@ -188,6 +188,7 @@ class StyleArchiveRequest(BaseModel):
     style_name: str
     archive: bool
     user: str
+    studio_overrides: dict = {}
 
 class StyleAddRequest(BaseModel):
     user: str
@@ -199,6 +200,7 @@ class StyleAddRequest(BaseModel):
     fabric2_cm: float = 0
     lining: str = ""
     lining_cm: float = 0
+    studio_overrides: dict = {}
 
 class SaveInventoryRequest(BaseModel):
     fabric_name: str
@@ -219,10 +221,39 @@ class DashboardRequest(BaseModel):
 
 class StudioRequest(BaseModel):
     forecast_data: List[dict] = []
+    studio_overrides: dict = {}
 
 # ════════════════════════════════════════════════════
 # Data Loaders
 # ════════════════════════════════════════════════════
+
+def apply_studio_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
+    if not overrides: return df
+    
+    # 1. Added
+    added = overrides.get("added", [])
+    if added:
+        new_df = pd.DataFrame(added)
+        df = pd.concat([df, new_df], ignore_index=True)
+        
+    # 2. Archived
+    archived = overrides.get("archived", {})
+    if archived:
+        for s_name, is_arch in archived.items():
+            if s_name in df["style_name"].values:
+                df.loc[df["style_name"] == s_name, "status"] = "Archived" if is_arch else "Active"
+                
+    # 3. Updated
+    updated = overrides.get("updated", {})
+    if updated:
+        for s_name, updates in updated.items():
+            if s_name in df["style_name"].values:
+                for k, v in updates.items():
+                    if k in df.columns:
+                        df.loc[df["style_name"] == s_name, k] = v
+                        
+    return df
+
 
 def get_mapping() -> pd.DataFrame:
     """Load and normalize the fabric mapping CSV."""
@@ -449,7 +480,7 @@ async def get_system_metrics():
 
 @app.post("/api/studio/styles")
 async def get_studio_styles(req: StudioRequest):
-    df = get_mapping()
+    df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     
     active = df[df["status"] == "Active"]
@@ -489,7 +520,7 @@ async def get_studio_styles(req: StudioRequest):
 
 @app.patch("/api/studio/styles/update")
 async def update_style(req: StyleAddRequest):
-    df = get_mapping()
+    df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     if req.style_name not in df["style_name"].values:
         raise HTTPException(status_code=404, detail="Style not found")
     
@@ -523,7 +554,7 @@ async def update_style(req: StyleAddRequest):
 
 @app.post("/api/studio/styles/archive")
 async def toggle_style_archive(req: StyleArchiveRequest):
-    df = get_mapping()
+    df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     
     if req.style_name not in df["style_name"].values:
         raise HTTPException(status_code=404, detail="Style not found")
@@ -544,7 +575,7 @@ async def toggle_style_archive(req: StyleArchiveRequest):
 
 @app.post("/api/studio/styles/add")
 async def add_style(req: StyleAddRequest):
-    df = get_mapping()
+    df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     
     # Validate input
     existing_styles = df["style_name"].tolist()
@@ -859,11 +890,12 @@ class DashboardSummaryRequest(BaseModel):
     family: str = ""
     forecast_data: List[dict] = []
     forecast_timestamp: str = ""
+    studio_overrides: dict = {}
 
 @app.post("/api/dashboard/summary")
 async def get_dashboard_summary(req: DashboardSummaryRequest):
     """Control Tower summary with real computed metrics."""
-    mapping_df = get_mapping()
+    mapping_df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     saved_inputs = load_saved_inputs()
     
@@ -931,7 +963,7 @@ async def get_dashboard_summary(req: DashboardSummaryRequest):
 @app.post("/api/dashboard/fabrics")
 async def get_dashboard_fabrics(req: DashboardSummaryRequest, background_tasks: BackgroundTasks):
     """Get active fabric families with demand, risk, and inventory data."""
-    mapping_df = get_mapping()
+    mapping_df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
     saved_inputs = load_saved_inputs()
     
@@ -1146,29 +1178,35 @@ class EmailTestRequest(BaseModel):
 
 @app.post("/api/email/test")
 async def send_test_email(req: EmailTestRequest):
-    # HARDCODE RECEIVER AS PER REQUIREMENTS
-    req.receivers = ["sathinishtha1054@gmail.com"]
+    # Retrieve config or default
+    config = load_email_config()
+    final_receivers = [config.get("recipient")] if config.get("recipient") else req.receivers
     
     test_alerts = [
-        {"style": "Test Style Alpha", "fabric": "Main Fabric A", "qty": 150},
-        {"style": "Test Style Alpha", "fabric": "Lining Fabric B", "qty": 45}
+        {"family": "Halo Collection", "fabric": "Main Fabric A", "reorder": 150.5, "lead_time": 14, "coverage": 3.2},
+        {"family": "Onyx Setup", "fabric": "Lining Fabric B", "reorder": 45.0, "lead_time": 7, "coverage": 1.1}
     ]
     
-    style_name = test_alerts[0]["style"]
-    body = f"🚨 FABRIC SHORTAGE ALERT\n\nStyle: {style_name}\n\n--------------------------------\n"
-    for r in test_alerts:
-        body += f"{r['fabric']} → {r['qty']} m\n"
-    body += "\nPlease take immediate action.\n"
-    
-    message = f"From: {req.sender}\nTo: {', '.join(req.receivers)}\nSubject: FabricIntel Test Alert - {style_name}\n\n{body}"
+    body = "🚨 FABRIC RISK ALERT - FABRICINTEL (TEST EMAIL)\n\n"
+    for alert in test_alerts:
+        body += f"Collection: {alert['family']}\n\n"
+        body += f"Fabric: {alert['fabric']}\n\n"
+        body += "Risk Level: Critical\n\n"
+        body += f"Reorder Required: {alert['reorder']} m\n\n"
+        body += f"Lead Time: {alert['lead_time']} days\n\n"
+        body += f"Current Coverage: {alert['coverage']} days\n"
+        body += "----------------------------------------\n\n"
+        
+    subject = "🚨 Fabric Risk Alert - FABRICINTEL (Test)"
+    message = f"From: {req.sender}\nTo: {', '.join(final_receivers)}\nSubject: {subject}\n\n{body}"
     
     try:
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(req.sender, req.password)
-        server.sendmail(req.sender, req.receivers, message.encode('utf-8'))
+        server.sendmail(req.sender, final_receivers, message.encode('utf-8'))
         server.quit()
-        return {"success": True, "message": f"Test email successfully sent to {len(req.receivers)} recipient(s)!"}
+        return {"success": True, "message": f"Test email successfully sent to {len(final_receivers)} recipient(s)!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
