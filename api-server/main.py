@@ -1166,7 +1166,7 @@ def send_automated_risk_alert_bg(critical_alerts):
         message = f"From: {sender}\nTo: {recipient}\nSubject: {subject}\n\n{body}"
         
         try:
-            server = smtplib.SMTP("smtp.gmail.com", 587)
+            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
             server.starttls()
             server.login(sender, password)
             server.sendmail(sender, [recipient], message.encode('utf-8'))
@@ -1204,14 +1204,14 @@ async def send_test_email(req: EmailTestRequest):
     message = f"From: {req.sender}\nTo: {', '.join(final_receivers)}\nSubject: {subject}\n\n{body}"
     
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
         server.starttls()
         server.login(req.sender, req.password)
         server.sendmail(req.sender, final_receivers, message.encode('utf-8'))
         server.quit()
         return {"success": True, "message": f"Test email successfully sent to {len(final_receivers)} recipient(s)!"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"SMTP Error: {str(e)}")
 
 
 class RiskAlertRequest(BaseModel):
