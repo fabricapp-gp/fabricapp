@@ -70,9 +70,9 @@ export default function StudioPage() {
 
   const fetchStyles = useCallback(async () => {
     try {
-      const savedResult = localStorage.getItem("fabricintel_forecast_result")
-      const parsedResult = savedResult ? JSON.parse(savedResult) : null
-      const forecastData = parsedResult?.forecast_data || []
+      const { loadForecastResult } = await import("@/lib/firestore")
+      const parsedResult = await loadForecastResult()
+      const forecastData = (parsedResult?.forecast_data as Record<string, unknown>[]) || []
 
       const data = await apiPost<{ active: StyleRow[]; archived: StyleRow[]; total: number }>(
         "/api/studio/styles",

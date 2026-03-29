@@ -242,9 +242,13 @@ def get_aggregated_fabrics(mapping_df: pd.DataFrame, style_family: str) -> List[
 # ═══════════════════════════════════════════════════
 
 def get_global_fabric_demand(mapping_df: pd.DataFrame, forecast_df: pd.DataFrame) -> List[Dict]:
-    """Aggregate fabric demand across ALL active styles for procurement planning."""
+    """Aggregate fabric demand across ALL active styles for procurement planning.
+    
+    Uses compound key (fabric_family, fabric_name) to prevent cross-collection mixing.
+    """
     all_families = mapping_df.loc[mapping_df["status"] == "Active", "fabric_family"].dropna().unique()
-    global_demand: Dict[str, Dict] = {}
+    # Key: (family, fabric_name) → prevents cross-family merging
+    global_demand: Dict[Tuple[str, str], Dict] = {}
 
     for family in all_families:
         avg, _, _ = get_14day_avg_forecast(forecast_df, family)
@@ -256,22 +260,25 @@ def get_global_fabric_demand(mapping_df: pd.DataFrame, forecast_df: pd.DataFrame
             demand_daily = (safe_demand or 0) * ratio
             demand_14d = demand_daily * 14
 
-            if fabric["name"] not in global_demand:
-                global_demand[fabric["name"]] = {
+            compound_key = (family, fabric["name"])
+            if compound_key not in global_demand:
+                global_demand[compound_key] = {
                     "demand_daily": 0,
                     "demand_14d": 0,
                     "styles": set(),
                     "roles": set(),
                 }
-            global_demand[fabric["name"]]["demand_daily"] += demand_daily
-            global_demand[fabric["name"]]["demand_14d"] += demand_14d
-            global_demand[fabric["name"]]["styles"].update(fabric.get("used_in_styles", []))
-            global_demand[fabric["name"]]["roles"].update(fabric.get("role", "").split(" / "))
+            global_demand[compound_key]["demand_daily"] += demand_daily
+            global_demand[compound_key]["demand_14d"] += demand_14d
+            global_demand[compound_key]["styles"].update(fabric.get("used_in_styles", []))
+            global_demand[compound_key]["roles"].update(fabric.get("role", "").split(" / "))
 
     rows = []
-    for name, data in sorted(global_demand.items(), key=lambda x: -x[1]["demand_14d"]):
+    for (family, name), data in sorted(global_demand.items(), key=lambda x: -x[1]["demand_14d"]):
         rows.append({
             "fabric": name,
+            "fabric_family": family,
+            "compound_key": f"{family}::{name}",
             "demand_daily": round(data["demand_daily"], 2),
             "demand_14d": round(data["demand_14d"], 1),
             "used_in_count": len(data["styles"]),
@@ -285,13 +292,19 @@ def get_global_fabric_demand(mapping_df: pd.DataFrame, forecast_df: pd.DataFrame
 # FABRIC USAGE VISIBILITY
 # ═══════════════════════════════════════════════════
 
-def get_fabric_usage(mapping_df: pd.DataFrame, fabric_name: str) -> Dict:
-    """Show where a specific fabric is used (which styles, as main or lining)."""
+def get_fabric_usage(mapping_df: pd.DataFrame, fabric_name: str, family_filter: str = "") -> Dict:
+    """Show where a specific fabric is used (which styles, as main or lining).
+    
+    If family_filter is provided, only shows usage within that collection.
+    """
     fabric_lower = standardize_fabric_name(fabric_name)
     if not fabric_lower:
         return {"main_usage": [], "lining_usage": []}
 
     active = mapping_df[mapping_df["status"] == "Active"]
+    if family_filter:
+        active = active[active["fabric_family"].str.strip().str.lower() == family_filter.strip().lower()]
+
     main_usage = []
     lining_usage = []
 

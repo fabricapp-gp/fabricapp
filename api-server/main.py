@@ -891,8 +891,9 @@ async def get_dashboard_summary(req: DashboardSummaryRequest):
             demand_daily = (safe_demand or 0) * ratio
             total_14d_demand = total_14d_demand + (demand_daily * 14)
             
-            # Use saved inputs or defaults
-            inp = saved_inputs.get(fab["name"], {})
+            # Use saved inputs or defaults — compound key prevents cross-family mixing
+            compound_key = f"{family}::{fab['name']}"
+            inp = saved_inputs.get(compound_key, saved_inputs.get(fab["name"], {}))
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
@@ -954,8 +955,9 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
             demand_daily = (safe_demand or 0) * ratio
             demand_14d = demand_daily * 14
             
-            # Use saved inputs or defaults
-            inp = saved_inputs.get(fab["name"], {})
+            # Use saved inputs or defaults — compound key prevents cross-family mixing
+            compound_key = f"{family}::{fab['name']}"
+            inp = saved_inputs.get(compound_key, saved_inputs.get(fab["name"], {}))
             inv = inp.get("inventory", 0.0)
             wip = inp.get("wip", 0.0)
             lead = inp.get("lead_time", 7)
@@ -971,6 +973,8 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
             
             family_fabrics.append({
                 "name": fab["name"],
+                "family": family,
+                "compound_key": compound_key,
                 "role": fab["role"],
                 "consumption_cm": fab["consumption_cm"],
                 "ratio": round(float(ratio), 4), # type: ignore
@@ -999,21 +1003,27 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
 
 
 @app.get("/api/dashboard/fabric-detail/{fabric_name}")
-async def get_fabric_detail(fabric_name: str):
-    """Get detailed usage info for a specific fabric."""
+async def get_fabric_detail(fabric_name: str, family: str = ""):
+    """Get detailed usage info for a specific fabric, optionally scoped to a family."""
     mapping_df = get_mapping()
     forecast_df = load_forecast()
     
-    usage = get_fabric_usage(mapping_df, fabric_name)
+    usage = get_fabric_usage(mapping_df, fabric_name, family_filter=family)
     
     # Get global demand for this fabric
     global_demand = get_global_fabric_demand(mapping_df, forecast_df)
-    fabric_demand = next((f for f in global_demand if f["fabric"] == fabric_name.strip().lower()), None)
+    # Match by compound key if family is provided, otherwise by name
+    if family:
+        fabric_demand = next((f for f in global_demand if f["compound_key"] == f"{family}::{fabric_name.strip().lower()}"), None)
+    else:
+        fabric_demand = next((f for f in global_demand if f["fabric"] == fabric_name.strip().lower()), None)
     
-    saved = get_saved_input(fabric_name.strip().lower())
+    compound_key = f"{family}::{fabric_name.strip().lower()}" if family else fabric_name.strip().lower()
+    saved = get_saved_input(compound_key)
     
     return {
         "fabric_name": fabric_name,
+        "fabric_family": family,
         "main_usage": usage["main_usage"],
         "lining_usage": usage["lining_usage"],
         "demand": fabric_demand,
@@ -1088,6 +1098,95 @@ async def send_test_email(req: EmailTestRequest):
         server.sendmail(req.sender, req.receivers, message.encode('utf-8'))
         server.quit()
         return {"success": True, "message": f"Test email successfully sent to {len(req.receivers)} recipient(s)!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RiskAlertRequest(BaseModel):
+    sender: str
+    password: str
+    receivers: List[str]
+    family: str = ""  # optional: filter by collection
+    forecast_data: List[dict] = []
+
+@app.post("/api/email/risk-alert")
+async def send_risk_alert(req: RiskAlertRequest):
+    """Send email alert for Critical-risk fabrics."""
+    mapping_df = get_mapping()
+    forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
+    saved_inputs = load_saved_inputs()
+    
+    active_df = mapping_df[mapping_df["status"] == "Active"]
+    if req.family:
+        active_df = active_df[active_df["fabric_family"].str.strip().str.lower() == req.family.strip().lower()]
+    families = sorted(active_df["fabric_family"].dropna().unique())
+    
+    critical_fabrics = []
+    
+    for family in families:
+        style_demand, _, _ = get_14day_avg_forecast(forecast_df, family)
+        safe_demand = safe_float(style_demand, 0.0)
+        fabrics = get_aggregated_fabrics(mapping_df, family)
+        
+        for fab in fabrics:
+            ratio = fab.get("ratio", 0)
+            demand_daily = (safe_demand or 0) * ratio
+            compound_key = f"{family}::{fab['name']}"
+            inp = saved_inputs.get(compound_key, saved_inputs.get(fab["name"], {}))
+            inv = inp.get("inventory", 0.0)
+            wip = inp.get("wip", 0.0)
+            lead = inp.get("lead_time", 7)
+            buffer = inp.get("buffer_days", 2)
+            moq = inp.get("moq", 50.0)
+            wip_m = (wip * fab.get("consumption_cm", 0)) / 100.0
+            
+            _, coverage, reorder, risk = calculate_metrics(
+                demand_daily, inv, wip_m, lead, buffer, moq
+            )
+            
+            if risk == "Critical":
+                critical_fabrics.append({
+                    "family": family,
+                    "fabric": fab["name"],
+                    "reorder": round(float(reorder), 1),
+                    "risk": risk,
+                })
+    
+    if not critical_fabrics:
+        return {"success": True, "message": "No critical fabrics found. No email sent."}
+    
+    # Format email body
+    body = "🚨 FABRIC RISK ALERT — FABRICINTEL\n\n"
+    by_family = {}
+    for cf in critical_fabrics:
+        by_family.setdefault(cf["family"], []).append(cf)
+    
+    for fam, items in sorted(by_family.items()):
+        body += f"Collection: {fam}\n"
+        body += "Critical Fabrics:\n"
+        for item in items:
+            body += f"  • {item['fabric']} → Reorder {item['reorder']}m\n"
+        body += "\n"
+    
+    body += "Please take immediate action.\n"
+    
+    subject = "Fabric Risk Alert - FABRICINTEL"
+    if req.family:
+        subject += f" ({req.family})"
+    
+    message = f"From: {req.sender}\nTo: {', '.join(req.receivers)}\nSubject: {subject}\n\n{body}"
+    
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(req.sender, req.password)
+        server.sendmail(req.sender, req.receivers, message.encode('utf-8'))
+        server.quit()
+        return {
+            "success": True, 
+            "message": f"Risk alert sent for {len(critical_fabrics)} critical fabric(s) to {len(req.receivers)} recipient(s)!",
+            "critical_count": len(critical_fabrics),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -40,18 +40,20 @@ interface FabricDetailData {
 
 interface FabricDetailPanelProps {
   fabricName: string
+  family?: string
   onClose: () => void
 }
 
-export function FabricDetailPanel({ fabricName, onClose }: FabricDetailPanelProps) {
+export function FabricDetailPanel({ fabricName, family, onClose }: FabricDetailPanelProps) {
   const [data, setData] = useState<FabricDetailData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
+        const familyParam = family ? `?family=${encodeURIComponent(family)}` : ""
         const data = await apiGet<FabricDetailData>(
-          `/api/dashboard/fabric-detail/${encodeURIComponent(fabricName)}`
+          `/api/dashboard/fabric-detail/${encodeURIComponent(fabricName)}${familyParam}`
         )
         setData(data)
       } catch (err) {

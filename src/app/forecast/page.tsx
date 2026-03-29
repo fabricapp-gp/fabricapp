@@ -54,19 +54,22 @@ export default function ForecastPage() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const [hydrated, setHydrated] = useState(false)
-
-  // Hydrate from localStorage on mount
+  // Hydrate from Firestore on mount
   useEffect(() => {
-    const savedUpload = localStorage.getItem("fabricintel_forecast_upload")
-    const savedResult = localStorage.getItem("fabricintel_forecast_result")
-    
-    if (savedUpload) setUploadResult(JSON.parse(savedUpload))
-    if (savedResult) setForecastResult(JSON.parse(savedResult))
-    
-    setHydrated(true)
+    const hydrate = async () => {
+      const { loadForecastResult } = await import("@/lib/firestore")
+      const savedResult = await loadForecastResult()
+      const savedUpload = localStorage.getItem("fabricintel_forecast_upload")
+      
+      if (savedUpload) setUploadResult(JSON.parse(savedUpload))
+      if (savedResult) setForecastResult(savedResult as unknown as ForecastResult)
+      
+      setHydrated(true)
+    }
+    hydrate()
   }, [])
 
-  // Save to localStorage when results change
+  // Save to Firestore when results change
   useEffect(() => {
     if (hydrated && uploadResult) {
       localStorage.setItem("fabricintel_forecast_upload", JSON.stringify(uploadResult))
@@ -75,7 +78,9 @@ export default function ForecastPage() {
 
   useEffect(() => {
     if (hydrated && forecastResult) {
-      localStorage.setItem("fabricintel_forecast_result", JSON.stringify(forecastResult))
+      import("@/lib/firestore").then(({ saveForecastResult }) => {
+        saveForecastResult(forecastResult as unknown as Record<string, unknown>)
+      })
     }
   }, [forecastResult, hydrated])
 

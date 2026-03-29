@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { apiGet, apiPost } from "@/lib/api"
+import { loadForecastResult, saveDashboardEdits, loadDashboardEdits, saveDashboardCache, loadDashboardCache } from "@/lib/firestore"
 
 interface DashboardSummary {
   active_styles: number
@@ -38,7 +39,7 @@ interface FamilyResult {
   family: string
   style_demand: number
   confidence: string
-  fabrics: FabricData[]
+  fabrics: (FabricData & { compound_key: string; family: string })[]
 }
 
 function DashboardContent() {
@@ -52,6 +53,7 @@ function DashboardContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [riskFilter, setRiskFilter] = useState<"all" | "Critical" | "Warning" | "Safe">("all")
   const [selectedFabric, setSelectedFabric] = useState<string | null>(null)
+  const [selectedFabricFamily, setSelectedFabricFamily] = useState<string>("")
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState("")
   const [selectedFamily, setSelectedFamily] = useState<string>("all")
@@ -62,44 +64,39 @@ function DashboardContent() {
   >({})
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate from localStorage on mount
+  // Hydrate from Firestore on mount
   useEffect(() => {
-    const savedSummary = localStorage.getItem("fabricintel_dashboard_summary")
-    const savedFamilies = localStorage.getItem("fabricintel_dashboard_families")
-    const savedEdits = localStorage.getItem("fabricintel_dashboard_edits")
-    
-    if (savedSummary) setSummary(JSON.parse(savedSummary))
-    if (savedFamilies) setFamilies(JSON.parse(savedFamilies))
-    if (savedEdits) setEditedInputs(JSON.parse(savedEdits))
-    
-    setHydrated(true)
+    const hydrate = async () => {
+      const cachedDashboard = await loadDashboardCache()
+      const cachedEdits = await loadDashboardEdits()
+      
+      if (cachedDashboard?.summary) setSummary(cachedDashboard.summary as DashboardSummary)
+      if (cachedDashboard?.families) setFamilies(cachedDashboard.families as FamilyResult[])
+      if (cachedEdits && Object.keys(cachedEdits).length > 0) setEditedInputs(cachedEdits)
+      
+      setHydrated(true)
+    }
+    hydrate()
   }, [])
 
-  // Save to localStorage when states change (only after hydration)
+  // Save to Firestore when states change (only after hydration)
   useEffect(() => {
     if (hydrated && summary) {
-      localStorage.setItem("fabricintel_dashboard_summary", JSON.stringify(summary))
+      saveDashboardCache(summary, families)
     }
-  }, [summary, hydrated])
+  }, [summary, families, hydrated])
 
   useEffect(() => {
-    if (hydrated && families.length > 0) {
-      localStorage.setItem("fabricintel_dashboard_families", JSON.stringify(families))
-    }
-  }, [families, hydrated])
-
-  useEffect(() => {
-    if (hydrated) {
-      localStorage.setItem("fabricintel_dashboard_edits", JSON.stringify(editedInputs))
+    if (hydrated && Object.keys(editedInputs).length > 0) {
+      saveDashboardEdits(editedInputs)
     }
   }, [editedInputs, hydrated])
 
   const fetchData = useCallback(async () => {
     try {
-      const savedResult = localStorage.getItem("fabricintel_forecast_result")
-      const parsedResult = savedResult ? JSON.parse(savedResult) : null
-      const forecastData = parsedResult?.forecast_data || []
-      const timestamp = parsedResult?.timestamp || ""
+      const parsedResult = await loadForecastResult()
+      const forecastData = (parsedResult?.forecast_data as Record<string, unknown>[]) || []
+      const timestamp = (parsedResult?.timestamp as string) || ""
 
       const payload = {
         family: selectedFamily !== "all" ? selectedFamily : "",
@@ -183,7 +180,8 @@ function DashboardContent() {
         totalFabrics++
         fab.used_in_styles.forEach((s) => activeStyles.add(s))
 
-        const edited = editedInputs[fab.name] || fab
+        const compoundKey = fab.compound_key || `${fam.family}::${fab.name}`
+        const edited = editedInputs[compoundKey] || fab
         const inventory = edited.inventory
         const wip = edited.wip
         const leadTime = edited.lead_time
@@ -234,9 +232,10 @@ function DashboardContent() {
       ...f,
       fabrics: f.fabrics
         .map((fab) => {
-          if (!editedInputs[fab.name]) return fab
+          const compoundKey = fab.compound_key || `${f.family}::${fab.name}`
+          if (!editedInputs[compoundKey]) return fab
 
-          const edited = editedInputs[fab.name]
+          const edited = editedInputs[compoundKey]
           const available = edited.inventory + (edited.wip * (fab.consumption_cm / 100))
           const coverage_days = fab.daily_demand > 0 ? available / fab.daily_demand : 999
           
@@ -296,9 +295,7 @@ function DashboardContent() {
       await apiPost("/api/dashboard/save-inputs", { user: user.username, items })
       
       setSaveMsg("Inputs saved successfully!")
-      // CRITICAL: Do NOT clear setEditedInputs({}). 
-      // Vercel serverless wipes /tmp files constantly, so the backend cannot be relied upon to persist the data.
-      // By keeping it in local state, localStorage acts as our permanent, infallible database.
+      // Edits remain in state and Firestore for persistence
       void fetchData() // Refresh with new calculations
       setTimeout(() => setSaveMsg(""), 3000)
     } catch (err: unknown) {
@@ -565,7 +562,8 @@ function DashboardContent() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                 {fam.fabrics.map((fab) => {
-                  const edited = editedInputs[fab.name] || fab
+                  const compoundKey = fab.compound_key || `${fam.family}::${fab.name}`
+                  const edited = editedInputs[compoundKey] || fab
                   // Dynamically calculate metrics based on current inputs
                   const inventory = edited.inventory
                   const wip = edited.wip
@@ -607,9 +605,12 @@ function DashboardContent() {
 
                   return (
                     <FabricCard
-                      key={fab.name}
+                      key={compoundKey}
                       fabric={dynamicFab}
-                      onSelectFabric={setSelectedFabric}
+                      onSelectFabric={(name) => {
+                        setSelectedFabric(name)
+                        setSelectedFabricFamily(fab.family || fam.family)
+                      }}
                     />
                   )
                 })}
@@ -630,7 +631,8 @@ function DashboardContent() {
                         </div>
                       )}
                       {fam.fabrics.map((fab) => {
-                        const edited = editedInputs[fab.name] || {
+                        const compoundKey = fab.compound_key || `${fam.family}::${fab.name}`
+                        const edited = editedInputs[compoundKey] || {
                           inventory: fab.inventory,
                           wip: fab.wip,
                           lead_time: fab.lead_time,
@@ -639,7 +641,7 @@ function DashboardContent() {
                         }
                         return (
                           <div
-                            key={fab.name}
+                            key={compoundKey}
                             className="grid grid-cols-6 gap-3 items-center bg-secondary/20 rounded-lg p-3 border border-border/30"
                           >
                             <div className="text-sm font-medium capitalize truncate">
@@ -656,7 +658,7 @@ function DashboardContent() {
                                 onChange={(e) =>
                                   setEditedInputs((prev) => ({
                                     ...prev,
-                                    [fab.name]: {
+                                    [compoundKey]: {
                                       ...edited,
                                       inventory: Number(e.target.value),
                                     },
@@ -676,7 +678,7 @@ function DashboardContent() {
                                 onChange={(e) =>
                                   setEditedInputs((prev) => ({
                                     ...prev,
-                                    [fab.name]: {
+                                    [compoundKey]: {
                                       ...edited,
                                       wip: Number(e.target.value),
                                     },
@@ -696,7 +698,7 @@ function DashboardContent() {
                                 onChange={(e) =>
                                   setEditedInputs((prev) => ({
                                     ...prev,
-                                    [fab.name]: {
+                                    [compoundKey]: {
                                       ...edited,
                                       lead_time: Number(e.target.value),
                                     },
@@ -716,7 +718,7 @@ function DashboardContent() {
                                 onChange={(e) =>
                                   setEditedInputs((prev) => ({
                                     ...prev,
-                                    [fab.name]: {
+                                    [compoundKey]: {
                                       ...edited,
                                       buffer_days: Number(e.target.value),
                                     },
@@ -736,7 +738,7 @@ function DashboardContent() {
                                 onChange={(e) =>
                                   setEditedInputs((prev) => ({
                                     ...prev,
-                                    [fab.name]: {
+                                    [compoundKey]: {
                                       ...edited,
                                       moq: Number(e.target.value),
                                     },
@@ -769,7 +771,8 @@ function DashboardContent() {
       {selectedFabric && (
         <FabricDetailPanel
           fabricName={selectedFabric}
-          onClose={() => setSelectedFabric(null)}
+          family={selectedFabricFamily}
+          onClose={() => { setSelectedFabric(null); setSelectedFabricFamily(""); }}
         />
       )}
     </div>
