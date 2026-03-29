@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { Mail, Send, AlertCircle, CheckCircle, Lock } from "lucide-react"
 import { apiFetch } from "@/lib/api"
@@ -13,7 +13,39 @@ export default function TestEmailPage() {
   const [receivers, setReceivers] = useState("sathinishtha1054@gmail.com")
   
   const [loading, setLoading] = useState(false)
+  const [savingConfig, setSavingConfig] = useState(false)
   const [result, setResult] = useState<{success: boolean, message: string} | null>(null)
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const data = await apiFetch<any>("/api/email/config", { method: "GET" })
+        if (data && data.recipient) {
+          setReceivers(data.recipient)
+        }
+      } catch (err) {
+        console.error("Failed to load email config", err)
+      }
+    }
+    fetchConfig()
+  }, [])
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true)
+    setResult(null)
+    try {
+      await apiFetch<any>("/api/email/config", {
+        method: "POST",
+        body: JSON.stringify({ recipient: receivers })
+      })
+      setResult({ success: true, message: "Email configuration saved successfully!" })
+    } catch (err) {
+      const error = err as Error
+      setResult({ success: false, message: error.message || "Failed to save configuration" })
+    } finally {
+      setSavingConfig(false)
+    }
+  }
 
   if (!user || user.role !== "Admin") {
     return (
@@ -97,13 +129,21 @@ export default function TestEmailPage() {
 
             <div>
               <h3 className="text-sm font-semibold mb-2">Recipient Settings (To)</h3>
-              <div>
-                <label className="text-xs font-medium text-foreground">Recipient Emails</label>
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-foreground">Recipient Emails (comma separated)</label>
                 <textarea 
                   value={receivers} 
-                  readOnly
-                  className="w-full mt-1 bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-20 cursor-not-allowed opacity-80"
+                  onChange={e => setReceivers(e.target.value)}
+                  className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-20"
                 />
+                <button
+                  type="button"
+                  onClick={handleSaveConfig}
+                  disabled={savingConfig}
+                  className="w-full flex justify-center items-center bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-2 rounded-md transition-colors text-xs font-medium border border-border"
+                >
+                  {savingConfig ? "Saving..." : "Save Email Configuration"}
+                </button>
               </div>
             </div>
           </div>

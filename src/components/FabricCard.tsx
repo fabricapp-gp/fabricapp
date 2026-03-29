@@ -3,7 +3,7 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RiskBadge } from "@/components/RiskBadge"
-import { Package, Truck, AlertCircle, ExternalLink, Clock } from "lucide-react"
+import { Package, Truck, AlertCircle, ExternalLink, Clock, Mail } from "lucide-react"
 
 export interface FabricData {
   name: string
@@ -22,6 +22,7 @@ export interface FabricData {
   reorder_qty: number
   status: "Safe" | "Warning" | "Critical"
   used_in_styles: string[]
+  alert_sent?: boolean
 }
 
 interface FabricCardProps {
@@ -75,8 +76,13 @@ export function FabricCard({ fabric, onSelectFabric }: FabricCardProps) {
       <CardHeader className="py-3 border-b border-border/30 bg-secondary/20">
         <div className="flex justify-between items-start">
           <div className="space-y-1 min-w-0 flex-1">
-            <CardTitle className="text-lg leading-tight text-foreground truncate capitalize">
+            <CardTitle className="text-lg leading-tight text-foreground truncate capitalize flex items-center gap-2">
               {fabric.name}
+              {fabric.alert_sent && (
+                <span title="Alert email triggered" className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full flex items-center gap-1 border border-red-500/20 uppercase tracking-widest font-bold">
+                  <Mail size={10} /> SENT
+                </span>
+              )}
             </CardTitle>
             <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
               {fabric.role}

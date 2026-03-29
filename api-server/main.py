@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -68,6 +68,7 @@ TRAINING_FILE = os.path.join(_WRITABLE_DIR, "prophet_training_data.csv")
 SAVED_INPUTS_FILE = os.path.join(_WRITABLE_DIR, "saved_inputs.json")
 AUDIT_LOG_FILE = os.path.join(_WRITABLE_DIR, "audit_log.json")
 USERS_FILE = os.path.join(_WRITABLE_DIR, "users.json")
+EMAIL_CONFIG_FILE = os.path.join(_WRITABLE_DIR, "email_config.json")
 
 # On Vercel, seed writable files from the repo copy if they don't exist in /tmp yet
 if _IS_VERCEL:
@@ -928,7 +929,7 @@ async def get_dashboard_summary(req: DashboardSummaryRequest):
 
 
 @app.post("/api/dashboard/fabrics")
-async def get_dashboard_fabrics(req: DashboardSummaryRequest):
+async def get_dashboard_fabrics(req: DashboardSummaryRequest, background_tasks: BackgroundTasks):
     """Get active fabric families with demand, risk, and inventory data."""
     mapping_df = get_mapping()
     forecast_df = load_forecast_from_client(req.forecast_data) if req.forecast_data else load_forecast()
@@ -940,6 +941,7 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
     families = sorted(active_df["fabric_family"].dropna().unique())
     
     results = []
+    new_criticals = []
     
     for family in families:
         style_demand, yhat_lower, yhat_upper = get_14day_avg_forecast(forecast_df, family)
@@ -971,6 +973,17 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
                 demand_daily, inv, wip_m, lead, buffer, moq
             )
             
+            if risk == "Critical":
+                if compound_key not in alerted_fabrics:
+                    new_criticals.append({
+                        "family": family,
+                        "fabric": fab["name"],
+                        "reorder": round(float(reorder), 1) if reorder != float("inf") else 0,
+                        "lead_time": lead,
+                        "coverage": round(float(coverage), 1) if coverage != float("inf") else 999
+                    })
+                    alerted_fabrics.add(compound_key)
+            
             family_fabrics.append({
                 "name": fab["name"],
                 "family": family,
@@ -990,6 +1003,7 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
                 "reorder_qty": round(float(reorder), 1), # type: ignore
                 "status": risk,
                 "used_in_styles": fab.get("used_in_styles", []),
+                "alert_sent": compound_key in alerted_fabrics,
             })
         
         results.append({
@@ -999,6 +1013,9 @@ async def get_dashboard_fabrics(req: DashboardSummaryRequest):
             "fabrics": family_fabrics,
         })
     
+    if new_criticals:
+        background_tasks.add_task(send_automated_risk_alert_bg, new_criticals)
+
     return results
 
 
@@ -1063,10 +1080,64 @@ async def save_inventory_inputs(req: SaveAllInventoryRequest):
 
 
 # ════════════════════════════════════════════════════
-# EMAIL
+# EMAIL AND AUTOMATED ALERTS
 # ════════════════════════════════════════════════════
 
 import smtplib
+
+alerted_fabrics = set()
+
+def load_email_config():
+    if os.path.exists(EMAIL_CONFIG_FILE):
+        return json.load(open(EMAIL_CONFIG_FILE))
+    return {}
+
+def save_email_config(config):
+    with open(EMAIL_CONFIG_FILE, "w") as f:
+        json.dump(config, f)
+
+class EmailConfigRequest(BaseModel):
+    recipient: str
+
+@app.get("/api/email/config")
+async def get_email_config():
+    return load_email_config()
+
+@app.post("/api/email/config")
+async def set_email_config(req: EmailConfigRequest):
+    save_email_config(req.model_dump())
+    return {"success": True}
+
+def send_automated_risk_alert_bg(critical_alerts):
+    config = load_email_config()
+    recipient = config.get("recipient")
+    if not recipient:
+        return
+        
+    sender = os.environ.get("NEXT_PUBLIC_SENDER_EMAIL")
+    password = os.environ.get("NEXT_PUBLIC_SENDER_PASSWORD")
+    if not sender or not password:
+        return
+        
+    for alert in critical_alerts:
+        body = f"Collection: {alert['family']}\n\n"
+        body += f"Fabric: {alert['fabric']}\n\n"
+        body += "Risk Level: Critical\n\n"
+        body += f"Reorder Required: {alert['reorder']} m\n\n"
+        body += f"Lead Time: {alert['lead_time']} days\n\n"
+        body += f"Current Coverage: {alert['coverage']} days\n"
+        
+        subject = "🚨 Fabric Risk Alert - FABRICINTEL"
+        message = f"From: {sender}\nTo: {recipient}\nSubject: {subject}\n\n{body}"
+        
+        try:
+            server = smtplib.SMTP("smtp.gmail.com", 587)
+            server.starttls()
+            server.login(sender, password)
+            server.sendmail(sender, [recipient], message.encode('utf-8'))
+            server.quit()
+        except Exception as e:
+            print(f"Error sending auto alert: {str(e)}")
 
 class EmailTestRequest(BaseModel):
     sender: str
