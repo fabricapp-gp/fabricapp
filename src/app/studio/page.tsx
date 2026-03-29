@@ -125,7 +125,9 @@ export default function StudioPage() {
       )
       void fetchStyles(newOverrides)
     } catch (e: unknown) {
-      console.error(e)
+      const error = e as Error
+      console.error(error)
+      showToast(`Error: ${error.message}`, "error")
     }
   }
 

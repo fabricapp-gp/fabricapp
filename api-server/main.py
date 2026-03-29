@@ -535,6 +535,9 @@ async def update_style(req: StyleAddRequest):
     fabric_family = req.fabric_family.strip() if req.fabric_family.strip() else normalize_style_name(req.style_name)
     current_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
     
+    df["last_updated_by"] = df["last_updated_by"].astype(str)
+    df["last_updated_time"] = df["last_updated_time"].astype(str)
+    
     mask = df["style_name"].str.strip().str.lower() == req.style_name.strip().lower()
     df.loc[mask, "fabric_family"] = fabric_family
     df.loc[mask, "main1_name"] = fabric1_clean
@@ -562,6 +565,10 @@ async def toggle_style_archive(req: StyleArchiveRequest):
         raise HTTPException(status_code=404, detail="Style not found")
     
     status = "Archived" if req.archive else "Active"
+    
+    df["last_updated_by"] = df["last_updated_by"].astype(str)
+    df["last_updated_time"] = df["last_updated_time"].astype(str)
+    
     mask = df["style_name"].str.strip().str.lower() == req.style_name.strip().lower()
     df.loc[mask, "status"] = status
     df.loc[mask, "last_updated_by"] = req.user

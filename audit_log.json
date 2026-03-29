@@ -22,5 +22,11 @@
     "user": "nishtha",
     "details": "nishtha logged in",
     "timestamp": "26 Mar 2026, 11:01 AM"
+  },
+  {
+    "action": "ARCHIVE_STYLE",
+    "user": "admin",
+    "details": "admin archived style: Kaia Top",
+    "timestamp": "29 Mar 2026, 08:04 PM"
   }
 ]
