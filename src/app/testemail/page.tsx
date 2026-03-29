@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/context/AuthContext"
-import { Mail, Send, AlertCircle, CheckCircle, Lock } from "lucide-react"
+import { Mail, Send, AlertCircle, CheckCircle, Lock, Server } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 
 export default function TestEmailPage() {
@@ -13,6 +13,7 @@ export default function TestEmailPage() {
   const [receivers, setReceivers] = useState("sathinishtha1054@gmail.com")
   
   const [loading, setLoading] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
   const [savingConfig, setSavingConfig] = useState(false)
   const [result, setResult] = useState<{success: boolean, message: string} | null>(null)
 
@@ -57,6 +58,23 @@ export default function TestEmailPage() {
         </div>
       </div>
     )
+  }
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true)
+    setResult(null)
+    try {
+      const data = await apiFetch<any>("/api/email/test-connection", {
+        method: "POST",
+        body: JSON.stringify({ sender, password })
+      })
+      setResult({ success: true, message: data.message })
+    } catch (err) {
+      const error = err as Error
+      setResult({ success: false, message: error.message || "Connection failed" })
+    } finally {
+      setTestingConnection(false)
+    }
   }
 
   const handleSendTest = async (e: React.FormEvent) => {
@@ -148,17 +166,31 @@ export default function TestEmailPage() {
             </div>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full flex justify-center items-center space-x-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-3 rounded-md transition-colors text-sm font-medium shadow-sm"
-          >
-            {loading ? (
-              <><span className="animate-spin mr-2">◒</span><span>Sending Email...</span></>
-            ) : (
-              <><Send size={18} /><span>Send Test SMTP Email</span></>
-            )}
-          </button>
+          <div className="flex flex-col gap-3">
+            <button 
+              type="button" 
+              onClick={handleTestConnection}
+              disabled={testingConnection || loading}
+              className="w-full flex justify-center items-center space-x-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-3 rounded-md transition-colors text-sm font-medium border border-border"
+            >
+              {testingConnection ? (
+                <><span className="animate-spin mr-2">◒</span><span>Checking Connection...</span></>
+              ) : (
+                <><Server size={18} /><span>Test SMTP Connection</span></>
+              )}
+            </button>
+            <button 
+              type="submit" 
+              disabled={loading || testingConnection}
+              className="w-full flex justify-center items-center space-x-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-3 rounded-md transition-colors text-sm font-medium shadow-sm"
+            >
+              {loading ? (
+                <><span className="animate-spin mr-2">◒</span><span>Sending Email...</span></>
+              ) : (
+                <><Send size={18} /><span>Send Test SMTP Email</span></>
+              )}
+            </button>
+          </div>
         </form>
 
         <div className="space-y-6">

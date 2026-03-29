@@ -1213,6 +1213,21 @@ async def send_test_email(req: EmailTestRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"SMTP Error: {str(e)}")
 
+class EmailTestConnectionRequest(BaseModel):
+    sender: str
+    password: str
+
+@app.post("/api/email/test-connection")
+async def test_email_connection(req: EmailTestConnectionRequest):
+    """Test SMTP authentication without sending an email."""
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+        server.starttls()
+        server.login(req.sender, req.password)
+        server.quit()
+        return {"success": True, "message": "SMTP connection successful! Credentials are valid."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Connection Failed: {str(e)}")
 
 class RiskAlertRequest(BaseModel):
     sender: str
