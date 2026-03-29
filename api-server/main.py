@@ -240,17 +240,19 @@ def apply_studio_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
     archived = overrides.get("archived", {})
     if archived:
         for s_name, is_arch in archived.items():
-            if s_name in df["style_name"].values:
-                df.loc[df["style_name"] == s_name, "status"] = "Archived" if is_arch else "Active"
+            mask = df["style_name"].str.strip().str.lower() == s_name.strip().lower()
+            if mask.any():
+                df.loc[mask, "status"] = "Archived" if is_arch else "Active"
                 
     # 3. Updated
     updated = overrides.get("updated", {})
     if updated:
         for s_name, updates in updated.items():
-            if s_name in df["style_name"].values:
+            mask = df["style_name"].str.strip().str.lower() == s_name.strip().lower()
+            if mask.any():
                 for k, v in updates.items():
                     if k in df.columns:
-                        df.loc[df["style_name"] == s_name, k] = v
+                        df.loc[mask, k] = v
                         
     return df
 
@@ -521,7 +523,7 @@ async def get_studio_styles(req: StudioRequest):
 @app.patch("/api/studio/styles/update")
 async def update_style(req: StyleAddRequest):
     df = apply_studio_overrides(get_mapping(), req.studio_overrides)
-    if req.style_name not in df["style_name"].values:
+    if req.style_name.strip().lower() not in df["style_name"].str.strip().str.lower().values:
         raise HTTPException(status_code=404, detail="Style not found")
     
     # Standardize fabric names
@@ -533,7 +535,7 @@ async def update_style(req: StyleAddRequest):
     fabric_family = req.fabric_family.strip() if req.fabric_family.strip() else normalize_style_name(req.style_name)
     current_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
     
-    mask = df["style_name"] == req.style_name
+    mask = df["style_name"].str.strip().str.lower() == req.style_name.strip().lower()
     df.loc[mask, "fabric_family"] = fabric_family
     df.loc[mask, "main1_name"] = fabric1_clean
     df.loc[mask, "main1_cm"] = req.fabric1_cm if fabric1_clean else 0
@@ -556,13 +558,14 @@ async def update_style(req: StyleAddRequest):
 async def toggle_style_archive(req: StyleArchiveRequest):
     df = apply_studio_overrides(get_mapping(), req.studio_overrides)
     
-    if req.style_name not in df["style_name"].values:
+    if req.style_name.strip().lower() not in df["style_name"].str.strip().str.lower().values:
         raise HTTPException(status_code=404, detail="Style not found")
     
     status = "Archived" if req.archive else "Active"
-    df.loc[df["style_name"] == req.style_name, "status"] = status
-    df.loc[df["style_name"] == req.style_name, "last_updated_by"] = req.user
-    df.loc[df["style_name"] == req.style_name, "last_updated_time"] = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    mask = df["style_name"].str.strip().str.lower() == req.style_name.strip().lower()
+    df.loc[mask, "status"] = status
+    df.loc[mask, "last_updated_by"] = req.user
+    df.loc[mask, "last_updated_time"] = datetime.now().strftime("%d %b %Y, %I:%M %p")
     
     save_df = denormalize_for_save(df)
     save_df.to_csv(MAPPING_FILE, index=False)

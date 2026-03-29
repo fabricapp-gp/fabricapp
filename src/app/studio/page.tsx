@@ -102,20 +102,24 @@ export default function StudioPage() {
     if (!user || user.role === "Viewer") return
 
     try {
+      // Create the state we want to persist if successful
       const newOverrides = { 
         ...studioOverrides, 
         archived: { ...studioOverrides.archived, [styleName]: archive } 
       }
-      setStudioOverrides(newOverrides)
-      const { saveStudioOverrides } = await import("@/lib/firestore")
-      await saveStudioOverrides(newOverrides)
 
       await apiPost("/api/studio/styles/archive", {
         style_name: styleName,
         archive,
         user: user.username,
-        studio_overrides: newOverrides,
+        studio_overrides: studioOverrides, // Send current baseline, not the new state
       })
+
+      // Update local memory and Firestore only on success
+      setStudioOverrides(newOverrides)
+      const { saveStudioOverrides } = await import("@/lib/firestore")
+      await saveStudioOverrides(newOverrides)
+
       showToast(
         `${styleName} successfully ${archive ? "archived" : "restored"}.`
       )
@@ -191,6 +195,15 @@ export default function StudioPage() {
         lining_cm: Number(newStyle.lining_cm) * 100,
       }
       
+      // Call API with current overrides as baseline context
+      const payloadWithOverrides = { ...payload, studio_overrides: studioOverrides }
+
+      const data = await apiFetch<any>(endpoint, {
+        method,
+        body: JSON.stringify(payloadWithOverrides)
+      });
+
+      // Update state and Firestore ONLY AFTER API success
       const newOverrides = { ...studioOverrides }
       if (showAddForm === "EDIT") {
         newOverrides.updated = { 
@@ -216,13 +229,6 @@ export default function StudioPage() {
       setStudioOverrides(newOverrides)
       const { saveStudioOverrides } = await import("@/lib/firestore")
       await saveStudioOverrides(newOverrides)
-
-      const payloadWithOverrides = { ...payload, studio_overrides: newOverrides }
-
-      const data = await apiFetch<any>(endpoint, {
-        method,
-        body: JSON.stringify(payloadWithOverrides)
-      });
 
       showToast(`${newStyle.style_name} ${showAddForm === "EDIT" ? "updated" : "saved"} successfully!`)
       setNewStyle({
