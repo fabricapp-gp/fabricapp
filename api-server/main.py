@@ -421,6 +421,8 @@ def _assert_admin(username: str):
 @app.get("/api/admin/users")
 async def list_users(requesting_user: str = ""):
     """List all users (no passwords). Admin-only."""
+    global USERS
+    USERS = _load_users()  # Always refresh from Firestore before listing
     _assert_admin(requesting_user)
     return [
         {"username": uname, "role": info.get("role", "Viewer")}
@@ -449,6 +451,8 @@ class DeleteUserRequest(BaseModel):
 @app.post("/api/admin/users/add")
 async def add_user(req: AddUserRequest):
     """Add a new user via the Admin GUI. Persisted to users.json."""
+    global USERS
+    USERS = _load_users()  # Refresh before checking existence
     _assert_admin(req.requesting_user)
 
     if not req.username.strip() or not req.password.strip():
@@ -470,15 +474,24 @@ async def add_user(req: AddUserRequest):
 @app.post("/api/admin/users/delete")
 async def delete_user(req: DeleteUserRequest):
     """Delete a user via the Admin GUI. Persisted to users.json."""
+    global USERS
+    USERS = _load_users()  # Refresh to ensure we have the latest list
     _assert_admin(req.requesting_user)
 
     if req.username.strip().lower() == req.requesting_user.strip().lower():
         raise HTTPException(status_code=400, detail="You cannot delete your own account")
 
-    if req.username not in USERS:
+    # Case-insensitive lookup to be more robust
+    target_username = None
+    for u in USERS:
+        if u.lower() == req.username.strip().lower():
+            target_username = u
+            break
+
+    if not target_username:
         raise HTTPException(status_code=404, detail=f"User '{req.username}' not found")
 
-    USERS.pop(req.username, None)  # Use pop for safer deletion
+    USERS.pop(target_username, None)
     _save_users(USERS)
     _append_audit("DELETE_USER", req.requesting_user, f"{req.requesting_user} deleted user: {req.username}")
 

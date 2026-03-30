@@ -549,7 +549,7 @@ export default function StudioPage() {
                     <div className="space-y-4">
                       <div className="bg-secondary/20 rounded-lg p-4 border border-border/30">
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          Main Fabric 1{" "}
+                          Main Fabric 1 (in meters){" "}
                           <span className="text-destructive">*</span>
                         </h4>
                         <div className="space-y-2">
@@ -575,15 +575,15 @@ export default function StudioPage() {
                                 ...newStyle,
                                 fabric1_cm: Number(e.target.value),
                               })
-                            }
-                            placeholder="Consumption (Meters)"
+                            }                            placeholder="Consumption (Meters)"
                             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
+                          <p className="text-[10px] text-muted-foreground mt-1 ml-1 font-medium italic">* Enter quantity in meters</p>
                         </div>
                       </div>
                       <div className="bg-secondary/20 rounded-lg p-4 border border-border/30">
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          Main Fabric 2{" "}
+                          Main Fabric 2 (in meters){" "}
                           <span className="text-muted-foreground">
                             (optional)
                           </span>
@@ -615,14 +615,15 @@ export default function StudioPage() {
                             placeholder="Consumption (Meters)"
                             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
+                          <p className="text-[10px] text-muted-foreground mt-1 ml-1 font-medium italic">* Enter quantity in meters</p>
                         </div>
                       </div>
                     </div>
-
+ 
                     <div className="space-y-4">
                       <div className="bg-secondary/20 rounded-lg p-4 border border-border/30">
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          Lining Fabric{" "}
+                          Lining Fabric (in meters){" "}
                           <span className="text-muted-foreground">
                             (optional)
                           </span>
