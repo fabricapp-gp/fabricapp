@@ -169,10 +169,10 @@ export default function AdminPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Shield className="text-primary" size={28} />
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+            <Shield className="text-primary shrink-0" size={28} />
             Admin Panel
           </h1>
           <p className="text-muted-foreground text-sm mt-1">

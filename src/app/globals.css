@@ -50,6 +50,15 @@
     color: var(--color-foreground);
     background-image: radial-gradient(circle at top, #0b1220, #020617);
     min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+/* Mobile Touch Optimization */
+@media (max-width: 768px) {
+  .mobile-touch-visible {
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 }
 

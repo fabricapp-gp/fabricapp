@@ -384,9 +384,9 @@ export default function StudioPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Style Studio</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">Style Studio</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Manage Bill of Materials (BOM) and active portfolio items.
           </p>
@@ -417,11 +417,11 @@ export default function StudioPage() {
       )}
 
       {/* Controls */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-1 border-b border-border/50">
-        <div className="flex space-x-1">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-1 border-b border-border/50">
+        <div className="flex space-x-1 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
           <button
             onClick={() => setActiveTab("ACTIVE")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+            className={`flex-1 sm:flex-none whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
               activeTab === "ACTIVE"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-secondary/50"
@@ -431,7 +431,7 @@ export default function StudioPage() {
           </button>
           <button
             onClick={() => setActiveTab("ARCHIVED")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+            className={`flex-1 sm:flex-none whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
               activeTab === "ARCHIVED"
                 ? "bg-secondary text-secondary-foreground"
                 : "text-muted-foreground hover:bg-secondary/50"
@@ -864,13 +864,13 @@ export default function StudioPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         {isEditor ? (
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity mobile-touch-visible">
                             <button
                               onClick={() => {
                                 const url = `/dashboard?family=${encodeURIComponent(row.fabric_family)}`
                                 router.push(url)
                               }}
-                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold whitespace-nowrap"
                               title="View Planning in Dashboard"
                             >
                               👁️ Planning
@@ -878,9 +878,9 @@ export default function StudioPage() {
                             {activeTab === "ACTIVE" && (
                               <button
                                 onClick={() => handleEditClick(row)}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-xs font-semibold"
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-xs font-semibold whitespace-nowrap"
                               >
-                                ✏️ Edit BOM
+                                ✏️ Edit
                               </button>
                             )}
                             <button
@@ -890,7 +890,7 @@ export default function StudioPage() {
                                   activeTab === "ACTIVE"
                                 )
                               }
-                              className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+                              className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors whitespace-nowrap ${
                                 activeTab === "ACTIVE"
                                   ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
                                   : "bg-safe/10 text-safe hover:bg-safe/20"
@@ -899,12 +899,12 @@ export default function StudioPage() {
                               {activeTab === "ACTIVE" ? (
                                 <>
                                   <Archive size={14} />
-                                  <span>Archive</span>
+                                  <span className="hidden sm:inline">Archive</span>
                                 </>
                               ) : (
                                 <>
                                   <RefreshCw size={14} />
-                                  <span>Restore</span>
+                                  <span className="hidden sm:inline">Restore</span>
                                 </>
                               )}
                             </button>

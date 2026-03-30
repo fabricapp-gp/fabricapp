@@ -62,12 +62,17 @@ export function Sidebar() {
 
   return (
     <>
-      <button 
-        onClick={toggleSidebar} 
-        className="fixed top-4 left-4 z-50 p-2 rounded-md bg-secondary text-secondary-foreground md:hidden hover:bg-secondary/80 focus:outline-none"
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
+      <div className="fixed top-0 left-0 right-0 h-16 bg-background/40 backdrop-blur-md border-b border-border/30 z-40 md:hidden flex items-center px-4">
+        <button 
+          onClick={toggleSidebar} 
+          className="p-2 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:outline-none"
+        >
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <span className="ml-4 font-bold tracking-tighter text-lg bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+          FABRICINTEL
+        </span>
+      </div>
 
       {/* Overlay */}
       {isOpen && (

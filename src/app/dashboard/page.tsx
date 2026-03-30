@@ -362,16 +362,16 @@ function DashboardContent() {
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">Control Tower</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-muted-foreground text-sm">
             Real-time supply chain overview and inventory risks.
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Fabric Family Dropdown */}
-          <div className="relative">
+          <div className="relative min-w-[160px]">
             <select
               id="family-selector"
               value={selectedFamily}
@@ -379,7 +379,7 @@ function DashboardContent() {
                 setSelectedFamily(e.target.value)
                 setLoading(true)
               }}
-              className="bg-background border border-primary/30 rounded-lg pl-3 pr-8 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
+              className="w-full bg-background border border-primary/30 rounded-lg pl-3 pr-8 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
             >
               <option value="all">All Collections</option>
               {familyList.map((f) => (
@@ -410,20 +410,22 @@ function DashboardContent() {
               )}
             </div>
           )}
-          <button
-            onClick={() => setShowManualAlertModal(true)}
-            className="flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 text-sm font-medium rounded-md transition-colors border border-primary/20"
-          >
-            <Mail size={16} />
-            <span>Manual Email</span>
-          </button>
-          <button
-            onClick={downloadCSV}
-            className="flex items-center space-x-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 text-sm font-medium rounded-md transition-colors border border-border"
-          >
-            <Download size={16} />
-            <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+            <button
+              onClick={() => setShowManualAlertModal(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 text-sm font-medium rounded-md transition-colors border border-primary/20"
+            >
+              <Mail size={16} />
+              <span>Manual Alert</span>
+            </button>
+            <button
+              onClick={downloadCSV}
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 text-sm font-medium rounded-md transition-colors border border-border"
+            >
+              <Download size={16} />
+              <span>Export</span>
+            </button>
+          </div>
         </div>
       </div>
 

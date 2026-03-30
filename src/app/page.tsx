@@ -45,25 +45,25 @@ export default function Home() {
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
       {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center py-16 text-center space-y-6 relative overflow-hidden rounded-3xl border border-border/50 bg-card/30 backdrop-blur-sm">
+      <section className="flex flex-col items-center justify-center py-12 md:py-16 text-center space-y-6 relative overflow-hidden rounded-3xl border border-border/50 bg-card/30 backdrop-blur-sm">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-50 pointer-events-none" />
-        <div className="z-10 space-y-4 px-4 max-w-3xl">
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight">
+        <div className="z-10 space-y-4 px-6 max-w-3xl">
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight">
             Industrial <span className="bg-gradient-to-r from-blue-400 to-indigo-500 text-transparent bg-clip-text">Fabric Planning</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Predict demand. Plan fabric. Prevent shortages. The intelligent control tower for your entire supply chain.
           </p>
           
           {!user ? (
-            <div className="pt-6">
-              <p className="text-sm font-medium text-warning bg-warning/10 px-4 py-2 rounded-full inline-block border border-warning/20 shadow-sm">
-                Please login using the sidebar to access planning features.
+            <div className="pt-4">
+              <p className="text-xs sm:text-sm font-medium text-warning bg-warning/10 px-4 py-2 rounded-full inline-block border border-warning/20 shadow-sm">
+                Please login using the sidebar to access features.
               </p>
             </div>
           ) : (
-            <div className="pt-6 flex items-center justify-center space-x-4">
-              <Link href="/dashboard" className="inline-flex items-center space-x-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-full font-medium transition-all shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5">
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/dashboard" className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-full font-medium transition-all shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5">
                 <span>Go to Dashboard</span>
                 <ArrowRight size={18} />
               </Link>

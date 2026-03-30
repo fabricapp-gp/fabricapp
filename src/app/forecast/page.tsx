@@ -185,9 +185,9 @@ export default function ForecastPage() {
   return (
     <div className="max-w-5xl space-y-8 animate-in fade-in duration-500 pb-12">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Forecast Engine</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">Forecast Engine</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Machine Learning pipeline using Prophet to predict 14-day fabric
             demand.
@@ -198,9 +198,9 @@ export default function ForecastPage() {
       {/* Forecast Freshness Status */}
       {forecastStatus && (
         <div className="bg-card/60 border border-border/50 rounded-xl p-5 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Clock size={20} className="text-muted-foreground" />
+              <Clock size={20} className="text-muted-foreground shrink-0" />
               <div>
                 <div className="text-sm font-semibold">Forecast Status</div>
                 <div className="text-xs text-muted-foreground">
@@ -208,7 +208,7 @@ export default function ForecastPage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className={`flex items-center gap-1.5 text-sm font-semibold ${freshnessColor}`}>
                 <span>{freshnessIcon}</span>
                 <span>{forecastStatus.freshness}</span>
@@ -221,18 +221,18 @@ export default function ForecastPage() {
                   </span>
                 )}
               </div>
-              {forecastStatus.styles_forecasted !== undefined && (
-                <div className="flex items-center gap-2">
-                  <div className="text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded-full">
+              <div className="flex flex-wrap items-center gap-2">
+                {forecastStatus.styles_forecasted !== undefined && (
+                  <div className="text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded-full border border-border/30">
                     {forecastStatus.styles_forecasted} styles
                   </div>
-                  {forecastStatus.total_rows !== undefined && (
-                    <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full border border-primary/20">
-                      Total History: {forecastStatus.total_rows.toLocaleString()} rows
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+                {forecastStatus.total_rows !== undefined && (
+                  <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full border border-primary/20">
+                    Total History: {forecastStatus.total_rows.toLocaleString()} rows
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
