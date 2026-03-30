@@ -3,410 +3,550 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FabricIntel | Handover Documentation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>FabricIntel | Executive Handover</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --bg-dark: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --border: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent: #10b981;
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139, 92, 246, 0.4);
+            --bg: #030712;
+            --card: rgba(17, 24, 39, 0.8);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-h: #f9fafb;
+            --text-p: #9ca3af;
+            --success: #10b981;
+            --warning: #f59e0b;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            scrollbar-width: thin;
-            scrollbar-color: var(--primary) transparent;
+            scroll-behavior: smooth;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            line-height: 1.6;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-p);
+            line-height: 1.7;
             overflow-x: hidden;
         }
 
-        /* Hero Section */
-        .hero {
-            height: 40vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent),
-                        radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent);
-            border-bottom: 1px solid var(--border);
-            padding: 2rem;
+        /* Abstract Background Elements */
+        .bg-glow {
+            position: fixed;
+            width: 50vw;
+            height: 50vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            z-index: -1;
+            top: -10vw;
+            right: -10vw;
+            opacity: 0.4;
+            filter: blur(80px);
         }
 
-        .hero h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 800;
-            background: linear-gradient(to right, #fff, #6366f1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
+        .bg-glow-2 {
+            position: fixed;
+            width: 40vw;
+            height: 40vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+            z-index: -1;
+            bottom: -5vw;
+            left: -5vw;
+            filter: blur(80px);
         }
 
-        .hero p {
-            font-size: 1.25rem;
-            color: var(--text-muted);
-            max-width: 600px;
-        }
-
-        /* Layout */
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 2rem;
-            padding: 3rem 2rem;
+            padding: 4rem 2rem;
         }
 
-        /* Sidebar Navigation */
-        .sidebar {
-            position: sticky;
-            top: 2rem;
-            height: fit-content;
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 6rem;
+            animation: fadeInDown 0.8s ease-out;
         }
 
-        nav ul {
-            list-style: none;
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-        }
-
-        nav li {
-            margin-bottom: 0.5rem;
-        }
-
-        nav a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            display: block;
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            transition: all 0.3s ease;
-        }
-
-        nav a:hover, nav a.active {
-            color: #fff;
-            background: rgba(99, 102, 241, 0.1);
-            transform: translateX(5px);
-        }
-
-        nav a.active {
-            border-left: 3px solid var(--primary);
-        }
-
-        /* Main Content */
-        section {
-            padding: 3rem;
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            border-radius: 2rem;
-            margin-bottom: 3rem;
-            animation: slideIn 0.6s ease-out forwards;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+            padding: 0.5rem 1.25rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--text-h);
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-summary {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto;
+            color: var(--text-p);
+        }
+
+        /* Navigation Bar */
+        .nav-bar {
+            position: sticky;
+            top: 1.5rem;
+            z-index: 100;
+            background: rgba(3, 7, 18, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 4rem;
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 4rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-link {
+            padding: 0.75rem 1.5rem;
+            border-radius: 3rem;
+            color: var(--text-p);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-link:hover {
+            color: var(--text-h);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        /* Content Sections */
+        section {
+            margin-bottom: 6rem;
+            scroll-margin-top: 8rem;
+        }
+
+        .glass-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 2.5rem;
+            padding: 3.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
 
         h2 {
             font-family: 'Outfit', sans-serif;
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-            color: #fff;
+            font-size: 2.5rem;
+            color: var(--text-h);
+            margin-bottom: 2rem;
             display: flex;
             align-items: center;
             gap: 1rem;
         }
 
-        h3 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.25rem;
-            margin: 2rem 0 1rem;
-            color: var(--primary);
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), #d946ef);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 8px 16px var(--primary-glow);
         }
 
-        p {
-            margin-bottom: 1rem;
-            color: var(--text-muted);
+        /* Email Summary Section */
+        .email-copy-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px dashed var(--primary);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            position: relative;
         }
 
-        code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            color: #ec4899;
-            font-family: monospace;
-            font-size: 0.9em;
+        .copy-btn {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
         }
 
-        .code-block {
-            background: #000;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            margin: 1.5rem 0;
-            border-left: 4px solid var(--primary);
-            overflow-x: auto;
+        .copy-btn:active { transform: scale(0.95); }
+
+        /* Journey/Path Section */
+        .journey-map {
+            position: relative;
+            padding-left: 3rem;
         }
 
-        .code-block code {
-            background: none;
-            color: #cbd5e1;
-            padding: 0;
-            font-size: 0.85rem;
-            white-space: pre-wrap;
+        .journey-map::before {
+            content: '';
+            position: absolute;
+            left: 0.75rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary), transparent);
         }
 
-        .step-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: transform 0.3s ease;
+        .journey-step {
+            position: relative;
+            margin-bottom: 4rem;
         }
 
-        .step-card:hover {
-            transform: scale(1.01);
-            border-color: rgba(99, 102, 241, 0.3);
+        .journey-dot {
+            position: absolute;
+            left: -3rem;
+            top: 0.25rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            background: var(--bg);
+            border: 3px solid var(--primary);
+            border-radius: 50%;
+            z-index: 1;
+            box-shadow: 0 0 10px var(--primary);
         }
 
-        .step-number {
+        .step-label {
+            font-size: 0.8rem;
             font-weight: 800;
             color: var(--primary);
-            margin-right: 0.5rem;
-        }
-
-        /* Features Grid */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .feature-item {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border);
-            padding: 2rem;
-            border-radius: 1.5rem;
-            text-align: center;
-        }
-
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
             display: block;
+        }
+
+        .step-title {
+            font-size: 1.5rem;
+            color: var(--text-h);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .step-click-guide {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .click-action {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .click-action strong {
+            color: var(--text-h);
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        /* Tech Tags */
+        .tech-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
         }
 
         /* Footer */
         footer {
             text-align: center;
-            padding: 4rem;
+            margin-top: 4rem;
+            font-size: 0.85rem;
+            color: var(--text-p);
             border-top: 1px solid var(--border);
-            color: var(--text-muted);
-            font-size: 0.9rem;
+            padding: 4rem 0;
         }
 
-        /* Responsive */
-        @media (max-width: 900px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-            .sidebar {
-                display: none;
-            }
-            .hero h1 { font-size: 2.5rem; }
+        /* Floating Animation */
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
         }
+
+        .floating-icon {
+            animation: floating 3s ease-in-out infinite;
+        }
+
     </style>
 </head>
 <body>
 
-    <div class="hero">
-        <h1>Handover Documentation</h1>
-        <p>A comprehensive guide to managing, deploying, and utilizing the FabricIntel Industrial Platform.</p>
-    </div>
+    <div class="bg-glow"></div>
+    <div class="bg-glow-2"></div>
 
     <div class="container">
-        <aside class="sidebar">
-            <nav>
-                <ul>
-                    <li><a href="#overview" class="active">Platform Overview</a></li>
-                    <li><a href="#running">How to Run</a></li>
-                    <li><a href="#features">Core Features</a></li>
-                    <li><a href="#architecture">Architecture</a></li>
-                    <li><a href="#maintenance">Maintenance</a></li>
-                </ul>
-            </nav>
-        </aside>
+        <header>
+            <div class="badge">Industrial Intelligence v1.2</div>
+            <h1>FabricIntel<br>Handover Manual</h1>
+            <p class="header-summary">A high-fidelity guide for management to understand, navigate, and utilize the next-generation supply chain forecasting platform.</p>
+        </header>
 
-        <main>
-            <!-- Overview -->
-            <section id="overview">
-                <h2>📦 Overview</h2>
-                <p>FabricIntel is a professional supply chain management and predictive analytics platform tailored for the fashion industry. It bridges the gap between sales forecasts and fabric fulfillment, allowing managers to identify supply risks before they impact production.</p>
-                <div class="features-grid">
-                    <div class="feature-item">
-                        <span class="feature-icon">🔍</span>
-                        <h4>Risk Detection</h4>
-                        <p>Identify critical fabric shortages 14 days in advance.</p>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">👕</span>
-                        <h4>BOM Studio</h4>
-                        <p>Manage style recipes and fabric consumption rules.</p>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">☁️</span>
-                        <h4>Persistence</h4>
-                        <p>Synced via Firebase for multi-device reliability.</p>
-                    </div>
-                </div>
-            </section>
+        <div class="nav-bar">
+            <a href="#summary" class="nav-link active">Executive Summary</a>
+            <a href="#setup" class="nav-link">Build Guide</a>
+            <a href="#workflow" class="nav-link">The Click-Map</a>
+            <a href="#tech" class="nav-link">Stack Specs</a>
+        </div>
 
-            <!-- How to Run -->
-            <section id="running">
-                <h2>🚀 How to Run (Step-by-Step)</h2>
+        <!-- Section 1: Executive Summary -->
+        <section id="summary">
+            <div class="glass-card">
+                <h2><div class="section-icon">💼</div> Executive Summary</h2>
+                <p>This application transforms raw sales data into actionable supply chain intelligence. It specifically solves the "14-Day Blindspot" by predicting fabric consumption before styles reach the production floor.</p>
                 
-                <div class="step-card">
-                    <span class="step-number">01</span>
-                    <strong>Environment Configuration</strong>
-                    <p>Create a <code>.env.local</code> file in the root with the following keys:</p>
-                    <div class="code-block">
-<code>NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_SENDER_EMAIL=your-gmail@gmail.com
-NEXT_PUBLIC_SENDER_PASSWORD=your-app-password
-# Firebase Credentials (from console)
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=fabricapp</code>
+                <div class="email-copy-box">
+                    <button class="copy-btn" onclick="copyEmail()">Copy for Email</button>
+                    <div id="email-content" style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
+                        <strong>Subject:</strong> Handover: FabricIntel Platform Deployment & Navigation Guide<br><br>
+                        Hi [Boss Name],<br><br>
+                        I've successfully stabilized and deployed the FabricIntel platform. It is now fully production-ready with the following core capabilities:<br>
+                        • <strong>Predictive Demand</strong>: Automated 14-day rolling fabric consumption.<br>
+                        • <strong>Live Control Tower</strong>: Real-time reorder suggestions with manual override.<br>
+                        • <strong>Style BOM Studio</strong>: Persistent management of garment recipes via Firestore.<br>
+                        • <strong>Automated Alerts</strong>: Ready-to-go SMTP alerting for critical fabric shortages.<br><br>
+                        Attached is a detailed interactive handover guide (HTML) that includes a step-by-step navigation map for effortlessly using every feature.<br><br>
+                        Best regards,<br>
+                        [Your Name]
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <div class="step-card">
-                    <span class="step-number">02</span>
-                    <strong>Backend Setup (FastAPI)</strong>
-                    <p>Install Python dependencies and start the API server:</p>
-                    <div class="code-block">
-<code>cd api-server
-pip install -r requirements.txt
-python main.py</code>
-                    </div>
-                    <p>The backend will serve metrics and logic at <code>localhost:8000</code>.</p>
-                </div>
-
-                <div class="step-card">
-                    <span class="step-number">03</span>
-                    <strong>Frontend Setup (Next.js)</strong>
-                    <p>Open a new terminal, install Node packages and start the UI:</p>
-                    <div class="code-block">
-<code>npm install
-npm run dev</code>
-                    </div>
-                    <p>Access the app at <code>http://localhost:3000</code>.</p>
-                </div>
-            </section>
-
-            <!-- Features -->
-            <section id="features">
-                <h2>✨ Core Features</h2>
+        <!-- Section 2: Setup Guide -->
+        <section id="setup">
+            <div class="glass-card">
+                <h2><div class="section-icon">🚀</div> Rapid Build Guide</h2>
+                <p>The platform is optimized for seamless deployment on Vercel or local industrial servers.</p>
                 
-                <h3>1. Forecast Engine</h3>
-                <p>Upload a standard sales CSV. The engine performs high-speed fuzzy matching to link sales keywords (e.g., "Bianca", "Onyx") to their respective fabric families. It generates a 14-day rolling demand model.</p>
+                <div class="step-card" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 2rem; border-radius: 1.5rem;">
+                    <h4 style="color: white; margin-bottom: 1rem;">Terminal Commands</h4>
+                    <pre style="color: var(--primary); font-family: monospace; font-size: 0.9rem;">
+# 1. Start Backend (API Metrics Engine)
+cd api-server
+python main.py
 
-                <h3>2. Control Tower (Dashboard)</h3>
-                <p>A high-fidelity dashboard that aggregates reorder suggestions. You can manually adjust Inventory, WIP, and Lead Times to see instant "What-If" risk recalculations. Use the <strong>Manual Email</strong> button to alert vendors instantly.</p>
-
-                <h3>3. Style Studio</h3>
-                <p>Define the "recipe" for any garment. You can add Main Fabric 1, Main Fabric 2, and Lining (all in meters). Includes permanent delete and archive controls saved directly to Firestore.</p>
-
-                <h3>4. Admin & Audit</h3>
-                <p>Manage users (Admins vs Viewers). View a persistent log of every major action: who added a user, who archived a style, or who ran a forecast.</p>
-            </section>
-
-            <!-- Architecture -->
-            <section id="architecture">
-                <h2>🏗️ Architecture Details</h2>
-                <p>The app is built using a modern decoupled stack designed for scalability:</p>
-                <ul>
-                    <li><strong>Frontend:</strong> Next.js 14 + Tailwind CSS + Lucide Icons.</li>
-                    <li><strong>Backend:</strong> FastAPI (Python) for heavy data processing.</li>
-                    <li><strong>Persistence:</strong> Firebase Firestore (NoSQL) for all user-generated state.</li>
-                    <li><strong>Routing:</strong> Vercel-ready <code>/api</code> remapping for cloud deployments.</li>
-                </ul>
-            </section>
-
-            <!-- Maintenance -->
-            <section id="maintenance">
-                <h2>🔧 Ongoing Maintenance</h2>
-                <div class="step-card">
-                    <strong>Cleaning Data</strong>
-                    <p>If the forecast becomes "Stale", simply upload a new Sales CSV in the Forecast Engine and click "Run Forecast". The dashboard will update globally.</p>
+# 2. Start Frontend (Live Control Tower)
+npm run dev</pre>
                 </div>
-                <div class="step-card">
-                    <strong>User Access</strong>
-                    <p>Only Admins can delete users or modify persistent configurations. Ensure 2-Step Verification is enabled on your Gmail "App Password" to keep the alerting system working.</p>
+
+                <div style="margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div style="background: rgba(16, 185, 129, 0.05); padding: 1.5rem; border-radius: 1.5rem; border: 1px solid rgba(16, 185, 129, 0.2);">
+                        <strong style="color: var(--success); display: block; margin-bottom: 0.5rem;">Prerequisites</strong>
+                        <ul style="font-size: 0.85rem; list-style: none;">
+                            <li>• Node.js 18+ & Python 3.10</li>
+                            <li>• Firebase Admin Access</li>
+                            <li>• SMTP App Password</li>
+                        </ul>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.05); padding: 1.5rem; border-radius: 1.5rem; border: 1px solid rgba(245, 158, 11, 0.2);">
+                        <strong style="color: var(--warning); display: block; margin-bottom: 0.5rem;">Critical Tip</strong>
+                        <p style="font-size: 0.85rem; margin: 0;">Ensure <code>.env.local</code> contains your Firebase config to maintain data persistence across restarts.</p>
+                    </div>
                 </div>
-            </section>
-        </main>
+            </div>
+        </section>
+
+        <!-- Section 3: The Journey (Click-Map) -->
+        <section id="workflow">
+            <div class="glass-card">
+                <h2><div class="section-icon">🗺️</div> Interactive Click-Map</h2>
+                <p>Follow this exact path to navigate the app effortlessly from a cold start.</p>
+
+                <div class="journey-map">
+                    <!-- Step 1 -->
+                    <div class="journey-step">
+                        <div class="journey-dot"></div>
+                        <span class="step-label">Stage 1</span>
+                        <h4 class="step-title">Initializing the Brain</h4>
+                        <p>Click <strong>"Forecast Engine"</strong> in the sidebar. This is where the intelligent mapping begins.</p>
+                        <div class="step-click-guide">
+                            <div class="click-action">
+                                <strong>1. Click "Upload Sales CSV"</strong>
+                                Select your raw order file from your local drive.
+                            </div>
+                            <div class="click-action">
+                                <strong>2. Click "Run Forecast"</strong>
+                                Watch the system clean data and map families (Bianca, Onyx, etc).
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="journey-step">
+                        <div class="journey-dot"></div>
+                        <span class="step-label">Stage 2</span>
+                        <h4 class="step-title">The Strategic Overview</h4>
+                        <p>Navigate to the <strong>"Dashboard"</strong>. This is your command center for risk analysis.</p>
+                        <div class="step-click-guide">
+                            <div class="click-action">
+                                <strong>1. Adjust Inline Quantities</strong>
+                                Click any <code>Inventory</code> or <code>Lead Time</code> box and type a new number.
+                            </div>
+                            <div class="click-action">
+                                <strong>2. Manual Email Alert</strong>
+                                Click the <span style="color: var(--primary)">Mail Icon</span> near the Save button to send targeted vendor alerts.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="journey-step">
+                        <div class="journey-dot"></div>
+                        <span class="step-label">Stage 3</span>
+                        <h4 class="step-title">Recipe Management</h4>
+                        <p>Open the <strong>"Studio"</strong>. Here you define the physical properties of your garments.</p>
+                        <div class="step-click-guide">
+                            <div class="click-action">
+                                <strong>1. "Add New Style BOM"</strong>
+                                Enter Style Name and fabric consumption (now explicitly in meters).
+                            </div>
+                            <div class="click-action">
+                                <strong>2. Manage Lifecycle</strong>
+                                Toggle the <span style="color: var(--warning)">Archive</span> icon to hide old styles or the <span style="color: #ef4444;">Trash</span> icon to delete.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="journey-step">
+                        <div class="journey-dot" style="background: var(--success); box-shadow: 0 0 10px var(--success);"></div>
+                        <span class="step-label">Stage 4</span>
+                        <h4 class="step-title">Security & Governance</h4>
+                        <p>Access the <strong>"Admin Panel"</strong>. Oversight for the entire operation.</p>
+                        <div class="step-click-guide">
+                            <div class="click-action">
+                                <strong>1. Manage Users</strong>
+                                Add new team members and assign "Admin" vs "Viewer" roles.
+                            </div>
+                            <div class="click-action">
+                                <strong>2. Audit Trail</strong>
+                                Scroll through the log to see exactly who performed what action and when.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Architecture -->
+        <section id="tech">
+            <div class="glass-card">
+                <h2><div class="section-icon">⚙️</div> Stack Specifications</h2>
+                <p>Industrial-grade technologies chosen for reliability and speed.</p>
+                
+                <div style="margin-top: 2rem;">
+                    <div class="tech-pill"><span style="color: #61dafb">⚛</span> Next.js 14 Frontend</div>
+                    <div class="tech-pill"><span style="color: #05998b">⚡</span> FastAPI Backend</div>
+                    <div class="tech-pill"><span style="color: #ffa611">🔥</span> Firestore Persistence</div>
+                    <div class="tech-pill"><span style="color: #38bdf8">🌊</span> Tailwind CSS</div>
+                    <div class="tech-pill"><span style="color: #f05032">📊</span> Pandas Analysis</div>
+                    <div class="tech-pill"><span style="color: #4f46e5">📧</span> SMTP Automation</div>
+                </div>
+
+                <div style="margin-top: 3rem; padding: 2rem; background: rgba(255,255,255,0.02); border-radius: 1.5rem; border: 1px solid var(--border);">
+                    <p style="font-size: 0.9rem; color: #fff;"><strong>Data Reliability Statement:</strong></p>
+                    <p style="font-size: 0.85rem;">All user-generated overrides (Inventory, WIP, BOM edits) are synchronized nearly instantly with <strong>Google Firebase Firestore</strong>. This ensures that even if the web server restarts or is redeployed, your work is never lost.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 FabricIntel Platform | Prepared by Industrial Digitalization Team</p>
+            <p style="margin-top: 0.5rem; opacity: 0.5;">Confidential Handover Document</p>
+        </footer>
     </div>
 
-    <footer>
-        <p>&copy; 2026 FabricIntel Industrial Platform | Handover Manual v1.2</p>
-    </footer>
-
     <script>
-        // Smooth Scrolling & Sidebar Highlighting
-        document.querySelectorAll('nav a').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetId = this.getAttribute('href');
-                const targetSection = document.querySelector(targetId);
-                
-                window.scrollTo({
-                    top: targetSection.offsetTop - 40,
-                    behavior: 'smooth'
-                });
-
-                // Update active state
-                document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-                this.classList.add('active');
+        // Copy functionality
+        function copyEmail() {
+            const content = document.getElementById('email-content').innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.innerText = 'Copied!';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.innerText = 'Copy for Email';
+                    btn.style.background = '#8b5cf6';
+                }, 2000);
             });
-        });
+        }
 
-        // Intersection Observer for highlighting nav on scroll
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const id = entry.target.getAttribute('id');
-                    document.querySelectorAll('nav a').forEach(a => {
-                        a.classList.toggle('active', a.getAttribute('href') === '#' + id);
-                    });
+        // Active Link Highlighting
+        const sections = document.querySelectorAll("section");
+        const navLinks = document.querySelectorAll(".nav-link");
+
+        window.addEventListener("scroll", () => {
+            let current = "";
+            sections.forEach((section) => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 120) {
+                    current = section.getAttribute("id");
                 }
             });
-        }, { threshold: 0.5 });
 
-        document.querySelectorAll('section').forEach(section => observer.observe(section));
+            navLinks.forEach((link) => {
+                link.classList.remove("active");
+                if (link.getAttribute("href").includes(current)) {
+                    link.classList.add("active");
+                }
+            });
+        });
     </script>
 </body>
 </html>
