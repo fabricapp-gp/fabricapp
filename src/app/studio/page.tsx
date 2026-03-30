@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   Trash2,
 } from "lucide-react"
-import { apiGet, apiPost, apiUpload, apiFetch } from "@/lib/api"
+import { apiPost, apiUpload, apiFetch } from "@/lib/api"
 import { StudioOverrides } from "@/lib/firestore"
 
 interface StyleRow {
@@ -201,7 +201,7 @@ export default function StudioPage() {
       // Call API with current overrides as baseline context
       const payloadWithOverrides = { ...payload, studio_overrides: studioOverrides }
 
-      const data = await apiFetch<any>(endpoint, {
+      await apiFetch<unknown>(endpoint, {
         method,
         body: JSON.stringify(payloadWithOverrides)
       });

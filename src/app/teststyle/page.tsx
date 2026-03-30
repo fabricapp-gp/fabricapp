@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { TestTube, Server, Send, AlertCircle, CheckCircle, Lock, Code } from "lucide-react"
-import { apiPost, apiFetch } from "@/lib/api"
+import { apiFetch } from "@/lib/api"
 
 export default function TestStylePage() {
   const { user } = useAuth()
@@ -20,7 +20,7 @@ export default function TestStylePage() {
   })
   
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{success: boolean, message: string, detail?: any} | null>(null)
+  const [result, setResult] = useState<{success: boolean, message: string, detail?: unknown} | null>(null)
   const [rawResponse, setRawResponse] = useState<string>("")
 
   if (!user || user.role !== "Admin") {
@@ -44,7 +44,7 @@ export default function TestStylePage() {
     try {
       // Using standard fetch instead of apiPost to capture RAW response for debugging
       // but still using BASE_URL for dynamic endpoint
-      const data = await apiFetch<any>("/api/studio/styles/add", {
+      const data = await apiFetch<{ message: string }>("/api/studio/styles/add", {
         method: "POST",
         body: JSON.stringify({ ...newStyle, user: user?.username })
       })

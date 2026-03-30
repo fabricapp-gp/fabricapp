@@ -21,7 +21,7 @@ import {
   Mail,
 } from "lucide-react"
 import { apiGet, apiPost } from "@/lib/api"
-import { loadForecastResult, saveDashboardEdits, loadDashboardEdits, saveDashboardCache, loadDashboardCache } from "@/lib/firestore"
+import { saveDashboardEdits, loadDashboardEdits, saveDashboardCache, loadDashboardCache } from "@/lib/firestore"
 
 interface DashboardSummary {
   active_styles: number
@@ -190,20 +190,6 @@ function DashboardContent() {
     }
   }, [familyFilter, families])
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="p-8 text-center bg-card rounded-2xl border border-border">
-          <AlertTriangle className="mx-auto h-12 w-12 text-warning mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">
-            Please log in using the sidebar to view the Dashboard.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   // Derived dynamic summary based on editedInputs
   const dynamicSummary = useMemo(() => {
     if (!summary || families.length === 0) return summary
@@ -212,13 +198,10 @@ function DashboardContent() {
     let totalReorder = 0
     let criticalRisks = 0
     let warnings = 0
-    let totalFabrics = 0
-    let activeStyles = new Set()
+    const activeStyles = new Set()
 
     families.forEach((fam) => {
-      const styleDemand = fam.style_demand || 0
       fam.fabrics.forEach((fab) => {
-        totalFabrics++
         fab.used_in_styles.forEach((s) => activeStyles.add(s))
 
         const compoundKey = fab.compound_key || `${fam.family}::${fab.name}`
@@ -261,6 +244,20 @@ function DashboardContent() {
       active_styles: activeStyles.size,
     }
   }, [summary, families, editedInputs])
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="p-8 text-center bg-card rounded-2xl border border-border">
+          <AlertTriangle className="mx-auto h-12 w-12 text-warning mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground">
+            Please log in using the sidebar to view the Dashboard.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const riskCount = dynamicSummary ? dynamicSummary.critical_risks + dynamicSummary.warnings : 0
   const isHighRisk = riskCount > 5

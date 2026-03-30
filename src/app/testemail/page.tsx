@@ -20,11 +20,11 @@ export default function TestEmailPage() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const data = await apiFetch<any>("/api/email/config", { method: "GET" })
+        const data = await apiFetch<{ recipient: string }>("/api/email/config", { method: "GET" })
         if (data && data.recipient) {
           setReceivers(data.recipient)
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Failed to load email config", err)
       }
     }
@@ -35,7 +35,7 @@ export default function TestEmailPage() {
     setSavingConfig(true)
     setResult(null)
     try {
-      await apiFetch<any>("/api/email/config", {
+      await apiFetch<unknown>("/api/email/config", {
         method: "POST",
         body: JSON.stringify({ recipient: receivers })
       })
@@ -64,7 +64,7 @@ export default function TestEmailPage() {
     setTestingConnection(true)
     setResult(null)
     try {
-      const data = await apiFetch<any>("/api/email/test-connection", {
+      const data = await apiFetch<{ message: string }>("/api/email/test-connection", {
         method: "POST",
         body: JSON.stringify({ sender, password })
       })
@@ -85,7 +85,7 @@ export default function TestEmailPage() {
     const receiverList = receivers.split(",").map(r => r.trim()).filter(r => r.length > 0)
     
     try {
-      const data = await apiFetch<any>("/api/email/test", {
+      const data = await apiFetch<{ message: string }>("/api/email/test", {
         method: "POST",
         body: JSON.stringify({ sender, password, receivers: receiverList })
       })

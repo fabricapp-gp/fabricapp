@@ -41,7 +41,7 @@ interface ForecastResult {
   styles_skipped?: number
   total_rows?: number
   logs?: string[]
-  forecast_data?: any[]
+  forecast_data?: unknown[]
 }
 
 export default function ForecastPage() {

@@ -63,7 +63,7 @@ export function FabricDetailPanel({ fabricName, family, onClose }: FabricDetailP
       }
     }
     fetchDetail()
-  }, [fabricName])
+  }, [fabricName, family])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end">

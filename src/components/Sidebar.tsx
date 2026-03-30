@@ -41,7 +41,7 @@ export function Sidebar() {
       login(data)
       setUsername("")
       setPassword("")
-    } catch (err: unknown) {
+    } catch {
       setError("Invalid username or password")
     }
   }
