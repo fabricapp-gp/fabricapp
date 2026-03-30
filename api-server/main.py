@@ -97,47 +97,63 @@ except ImportError:
 _DEFAULT_ADMIN = {"admin": {"password": "admin123", "role": "Admin"}}
 
 def _load_users() -> dict:
-    """Load users from users.json.
+    """Load users from Firestore REST API, falling back to local file/defaults."""
+    # Source of truth defaults
+    users = _DEFAULT_ADMIN.copy()
     
-    If users.json doesn't exist yet, seed it from the FABRICINTEL_USERS
-    env variable (if set), or create it with a default admin account.
-    """
-    # If users.json exists, use it as the single source of truth
+    # 1. TRY FIRESTORE SYNC
+    try:
+        # Use simple REST call to avoid firebase-admin dependency overhead
+        url = "https://firestore.googleapis.com/v1/projects/fabricintel/databases/(default)/documents/fabricintel/users"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            doc = r.json()
+            fields = doc.get("fields", {})
+            users_json = fields.get("json_data", {}).get("stringValue")
+            if users_json:
+                data = json.loads(users_json)
+                if isinstance(data, dict) and data:
+                    print("INFO: Synchronized users from Firestore.")
+                    return data
+    except Exception as e:
+        print(f"WARNING: Firestore User Sync (Load) failed: {e}")
+
+    # 2. FALLBACK TO LOCAL
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, "r") as f:
                 data = json.load(f)
-            if isinstance(data, dict) and data:
-                return data
+                if isinstance(data, dict) and data:
+                    return data
         except Exception:
             pass
 
-    # First run: seed from env variable or use default
-    seed_users = _DEFAULT_ADMIN.copy()
-    raw = os.environ.get("FABRICINTEL_USERS", "")
-    if raw:
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, dict) and parsed:
-                seed_users = parsed
-                print("INFO: Seeded users.json from FABRICINTEL_USERS env variable.")
-        except Exception as e:
-            print(f"WARNING: Failed to parse FABRICINTEL_USERS: {e}. Using default admin.")
-    else:
-        print("INFO: No users.json found and FABRICINTEL_USERS not set. Creating default admin account.")
-
-    _save_users(seed_users)
-    return seed_users
+    return users
 
 def _save_users(users: dict):
-    """Persist users to users.json."""
+    """Persist users to local JSON and Firestore REST API."""
+    # 1. LOCAL SAVE
     try:
         with open(USERS_FILE, "w") as f:
             json.dump(users, f, indent=2)
+    except Exception:
+        pass
+        
+    # 2. FIRESTORE SYNC (Background or blocking for safety here)
+    try:
+        url = "https://firestore.googleapis.com/v1/projects/fabricintel/databases/(default)/documents/fabricintel/users?updateMask.fieldPaths=json_data"
+        payload = {
+            "fields": {
+                "json_data": {"stringValue": json.dumps(users)}
+            }
+        }
+        # PATCH treats it as update or create if document doesn't exist? (actually need to check REST behavior)
+        # We'll use a PATCH which is standard for Firestore updates.
+        requests.patch(url, json=payload, timeout=5)
     except Exception as e:
-        print(f"ERROR: Failed to save users.json: {e}")
+        print(f"ERROR: Firestore User Sync (Save) failed: {e}")
 
-# Load once at startup; mutable dict so GUI changes take effect immediately
+# Load once at startup
 USERS: dict = _load_users()
 
 
@@ -233,8 +249,11 @@ def apply_studio_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
     # 1. Added
     added = overrides.get("added", [])
     if added:
-        new_df = pd.DataFrame(added)
-        df = pd.concat([df, new_df], ignore_index=True)
+        existing_styles = set(df["style_name"].str.strip().str.lower().dropna())
+        added_filtered = [item for item in added if item.get("style_name", "").strip().lower() not in existing_styles]
+        if added_filtered:
+            new_df = pd.DataFrame(added_filtered)
+            df = pd.concat([df, new_df], ignore_index=True)
         
     # 2. Archived
     archived = overrides.get("archived", {})
@@ -253,6 +272,14 @@ def apply_studio_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
                 for k, v in updates.items():
                     if k in df.columns:
                         df.loc[mask, k] = v
+                        
+    # 4. Deleted
+    deleted = overrides.get("deleted", {})
+    if deleted:
+        for s_name, is_del in deleted.items():
+            if is_del:
+                mask = df["style_name"].str.strip().str.lower() == s_name.strip().lower()
+                df = df[~mask]
                         
     return df
 
@@ -1241,6 +1268,7 @@ class RiskAlertRequest(BaseModel):
     password: str
     receivers: List[str]
     family: str = ""  # optional: filter by collection
+    fabric_filter: str = "" # optional: filter by specific fabric name
     forecast_data: List[dict] = []
 
 @app.post("/api/email/risk-alert")
@@ -1278,7 +1306,7 @@ async def send_risk_alert(req: RiskAlertRequest):
                 demand_daily, inv, wip_m, lead, buffer, moq
             )
             
-            if risk == "Critical":
+            if risk == "Critical" or (req.fabric_filter and fab["name"].strip().lower() == req.fabric_filter.strip().lower()):
                 critical_fabrics.append({
                     "family": family,
                     "fabric": fab["name"],

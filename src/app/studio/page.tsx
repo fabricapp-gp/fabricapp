@@ -13,6 +13,7 @@ import {
   Upload,
   AlertCircle,
   CheckCircle2,
+  Trash2,
 } from "lucide-react"
 import { apiGet, apiPost, apiUpload, apiFetch } from "@/lib/api"
 import { StudioOverrides } from "@/lib/firestore"
@@ -64,7 +65,7 @@ export default function StudioPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   
   // Persistent override state for Vercel restarts
-  const [studioOverrides, setStudioOverrides] = useState<StudioOverrides>({ added: [], updated: {}, archived: {} })
+  const [studioOverrides, setStudioOverrides] = useState<StudioOverrides>({ added: [], updated: {}, archived: {}, deleted: {} })
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToastMsg(msg)
@@ -251,6 +252,40 @@ export default function StudioPage() {
       showToast(err instanceof Error ? err.message : "Failed to save style", "error")
     } finally {
       setAdding(false)
+    }
+  }
+
+  const handleDeleteStyle = async (styleName: string) => {
+    if (!user || user.role === "Viewer") return
+    if (
+      !confirm(
+        `Are you sure you want to PERMANENTLY delete "${styleName}"? This cannot be undone.`
+      )
+    )
+      return
+
+    try {
+      // 1. Create new overrides state with this style in 'deleted'
+      // Also remove it from 'added' if it was a custom style
+      const newOverrides: StudioOverrides = {
+        ...studioOverrides,
+        deleted: { ...studioOverrides.deleted, [styleName]: true },
+        added: studioOverrides.added.filter((s) => s.style_name !== styleName),
+      }
+
+      // 2. Persist to Firestore & Local state
+      setStudioOverrides(newOverrides)
+      const { saveStudioOverrides } = await import("@/lib/firestore")
+      await saveStudioOverrides(newOverrides)
+
+      showToast(`${styleName} successfully deleted.`)
+
+      // 3. Refresh display
+      void fetchStyles(newOverrides)
+    } catch (e: unknown) {
+      const error = e as Error
+      console.error(error)
+      showToast(`Error: ${error.message}`, "error")
     }
   }
 
@@ -871,6 +906,13 @@ export default function StudioPage() {
                                   <span>Restore</span>
                                 </>
                               )}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStyle(row.style_name)}
+                              className="inline-flex items-center p-1.5 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                              title="Delete Style BOM permanently"
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         ) : (

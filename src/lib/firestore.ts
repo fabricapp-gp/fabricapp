@@ -85,6 +85,7 @@ export interface StudioOverrides {
   added: Record<string, unknown>[]
   updated: Record<string, Record<string, unknown>>
   archived: Record<string, boolean>
+  deleted: Record<string, boolean>
 }
 
 export async function saveStudioOverrides(overrides: StudioOverrides): Promise<void> {
@@ -94,9 +95,8 @@ export async function saveStudioOverrides(overrides: StudioOverrides): Promise<v
     console.error("Firestore saveStudioOverrides error:", err)
   }
 }
-
 export async function loadStudioOverrides(): Promise<StudioOverrides> {
-  const defaultOverrides = { added: [], updated: {}, archived: {} }
+  const defaultOverrides = { added: [], updated: {}, archived: {}, deleted: {} }
   try {
     const snap = await getDoc(doc(db, "fabricintel", "studio_overrides"))
     if (snap.exists()) {
@@ -104,7 +104,8 @@ export async function loadStudioOverrides(): Promise<StudioOverrides> {
       return {
         added: data.added || [],
         updated: data.updated || {},
-        archived: data.archived || {}
+        archived: data.archived || {},
+        deleted: data.deleted || {}
       }
     }
     return defaultOverrides

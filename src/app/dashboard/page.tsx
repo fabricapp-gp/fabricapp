@@ -18,6 +18,7 @@ import {
   Layers,
   ChevronDown,
   RefreshCw,
+  Mail,
 } from "lucide-react"
 import { apiGet, apiPost } from "@/lib/api"
 import { loadForecastResult, saveDashboardEdits, loadDashboardEdits, saveDashboardCache, loadDashboardCache } from "@/lib/firestore"
@@ -63,6 +64,8 @@ function DashboardContent() {
     Record<string, { inventory: number; wip: number; lead_time: number; buffer_days: number; moq: number }>
   >({})
   const [hydrated, setHydrated] = useState(false)
+  const [showManualAlertModal, setShowManualAlertModal] = useState(false)
+  const [alertSending, setAlertSending] = useState<string | null>(null)
 
   // Hydrate from Firestore on mount
   useEffect(() => {
@@ -135,6 +138,40 @@ function DashboardContent() {
       .then((data) => setFamilyList(data))
       .catch((err: unknown) => console.error("Failed to fetch families", err))
   }, [user])
+
+  const handleManualAlert = async (fabric: FabricData & { compound_key?: string }, family: string) => {
+    if (!user) return
+    const compoundKey = fabric.compound_key || `${family}::${fabric.name}`
+    setAlertSending(compoundKey)
+    try {
+      const { loadForecastResult } = await import("@/lib/firestore")
+      const parsedResult = await loadForecastResult()
+      const forecastData = (parsedResult?.forecast_data as Record<string, unknown>[]) || []
+      
+      const config = await apiGet<{ recipient: string }>("/api/email/config")
+      const sender = process.env.NEXT_PUBLIC_SENDER_EMAIL || ""
+      const password = process.env.NEXT_PUBLIC_SENDER_PASSWORD || ""
+      
+      if (!config.recipient) {
+        throw new Error("No recipient email configured. Please set it in the Test Email page.")
+      }
+
+      await apiPost("/api/email/risk-alert", {
+        sender,
+        password,
+        receivers: [config.recipient],
+        family: family,
+        fabric_filter: fabric.name,
+        forecast_data: forecastData
+      })
+      
+      alert(`Manual alert for ${fabric.name} sent successfully!`)
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to send alert")
+    } finally {
+      setAlertSending(null)
+    }
+  }
 
   // Automatic scrolling and highlighting logic
   useEffect(() => {
@@ -376,6 +413,13 @@ function DashboardContent() {
               )}
             </div>
           )}
+          <button
+            onClick={() => setShowManualAlertModal(true)}
+            className="flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 text-sm font-medium rounded-md transition-colors border border-primary/20"
+          >
+            <Mail size={16} />
+            <span>Manual Email</span>
+          </button>
           <button
             onClick={downloadCSV}
             className="flex items-center space-x-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 text-sm font-medium rounded-md transition-colors border border-border"
@@ -770,6 +814,92 @@ function DashboardContent() {
           </div>
         )}
       </div>
+
+      {/* Manual Alert Modal */}
+      {showManualAlertModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="p-6 border-b border-border bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/20 rounded-lg text-primary shadow-inner">
+                  <Mail size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">Manual Email Alerts</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Send targeted risk alerts for specific collection fabrics.
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowManualAlertModal(false)}
+                className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-secondary transition-colors"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+              {families.flatMap(f => f.fabrics.map(fab => ({ ...fab, family: f.family }))).length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-xl border border-dashed border-border flex flex-col items-center gap-3">
+                   <ShoppingCart className="opacity-40" size={32} />
+                   <p className="text-sm font-medium">No fabrics loaded yet.</p>
+                </div>
+              ) : (
+                families.flatMap(f => f.fabrics.map(fab => ({ ...fab, family: f.family })))
+                  .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()) || f.family.toLowerCase().includes(searchTerm.toLowerCase()))
+                  .map((fab) => (
+                  <div key={fab.compound_key} className="flex items-center justify-between p-4 bg-secondary/10 hover:bg-secondary/20 border border-border/50 rounded-xl hover:border-primary/40 transition-all group">
+                    <div className="flex flex-col gap-0.5">
+                      <h4 className="font-bold text-sm text-foreground tracking-tight">{fab.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded shadow-sm">{fab.family}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm ${
+                          fab.status === 'Critical' ? 'bg-destructive/10 text-destructive' : 
+                          fab.status === 'Warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-safe/20 text-safe'
+                        }`}>
+                          {fab.status}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleManualAlert(fab, fab.family)}
+                      disabled={alertSending === fab.compound_key}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm ${
+                        alertSending === fab.compound_key 
+                        ? "bg-secondary text-muted-foreground cursor-wait" 
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md active:scale-95"
+                      }`}
+                    >
+                      {alertSending === fab.compound_key ? (
+                        <>
+                          <RefreshCw size={12} className="animate-spin" />
+                          Sending
+                        </>
+                      ) : (
+                        <>
+                          <Mail size={12} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                          Send Alert
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="p-4 bg-secondary/20 border-t border-border flex justify-end">
+              <button 
+                onClick={() => setShowManualAlertModal(false)}
+                className="px-6 py-2 rounded-xl text-sm font-bold bg-background border border-border hover:bg-secondary transition-all hover:shadow-inner"
+              >
+                Close Panel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fabric Detail Panel */}
       {selectedFabric && (
